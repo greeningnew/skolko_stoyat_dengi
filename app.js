@@ -1,5 +1,5 @@
-const APPS_SCRIPT_URL = 'PASTE_YOUR_WEB_APP_URL_HERE';
-const api_token = 'https://script.google.com/macros/s/AKfycbzinZUX7K1sIveAC3-l-jUEAgBlgEUMT98UOe8D_c8wV0hUMsg8eB8AcZR6jHBtmXjb/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzinZUX7K1sIveAC3-l-jUEAgBlgEUMT98UOe8D_c8wV0hUMsg8eB8AcZR6jHBtmXjb/exec';
+const API_TOKEN = '673-ov1P8j9pRWAKzEEEEdyEC5MunZSr';
 
 const state = {
   operations: [],
