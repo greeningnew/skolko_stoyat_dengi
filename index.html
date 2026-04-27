@@ -3,59 +3,111 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#111827">
+  <meta name="theme-color" content="#f4f6fb">
   <title>Сколько стоят деньги</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <main class="app">
-    <header class="hero">
-      <div>
-        <p class="eyebrow">личная финпанель</p>
-        <h1>Сколько стоят деньги</h1>
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo-slot" aria-label="место под логотип"></div>
+        <h1>сколько стоят деньги</h1>
       </div>
-      <button id="syncButton" class="ghost">Обновить</button>
+      <button id="syncButton" class="icon-button" type="button" aria-label="Обновить">↻</button>
     </header>
 
-    <section class="card total-card">
-      <span>Всего денег</span>
-      <strong id="total">0 ₽</strong>
-      <small id="status">загрузка...</small>
+    <section id="homeTab" class="tab-page active">
+      <section class="balance-card">
+        <div class="balance-head">
+          <span>всего денег</span>
+          <small id="status">загрузка...</small>
+        </div>
+        <strong id="total">0 ₽</strong>
+        <div id="accountChips" class="account-chips">
+          <div class="balance-chip"><span>карта</span><b>0 ₽</b></div>
+          <div class="balance-chip"><span>наличка</span><b>0 ₽</b></div>
+          <div class="balance-chip"><span>крипта</span><b>0 ₽</b></div>
+        </div>
+      </section>
+
+      <section class="quick-card">
+        <div class="quick-head">
+          <h2>новая трата</h2>
+          <div class="stepper" aria-label="прогресс добавления операции">
+            <span class="step-dot active" data-step-indicator="1">1</span>
+            <i></i>
+            <span class="step-dot" data-step-indicator="2">2</span>
+            <i></i>
+            <span class="step-dot" data-step-indicator="3">3</span>
+          </div>
+        </div>
+
+        <form id="quickForm" class="quick-form">
+          <div class="form-step active" data-step="1">
+            <label class="amount-label" for="amountInput">сумма</label>
+            <div class="amount-row">
+              <input id="amountInput" name="amount" type="number" inputmode="decimal" placeholder="0" autocomplete="off" required>
+              <span>₽</span>
+            </div>
+            <button class="primary" type="button" data-next>далее</button>
+          </div>
+
+          <div class="form-step" data-step="2">
+            <p class="step-title">категория</p>
+            <div id="categoryChips" class="chip-grid"></div>
+            <div class="action-row">
+              <button class="secondary" type="button" data-prev>назад</button>
+              <button class="primary" type="button" data-next>далее</button>
+            </div>
+          </div>
+
+          <div class="form-step" data-step="3">
+            <p class="step-title">откуда списываем</p>
+            <div id="accountSelectChips" class="chip-grid compact"></div>
+            <label class="date-picker">
+              <span>дата</span>
+              <input id="dateInput" name="date" type="date" required>
+            </label>
+            <div class="action-row">
+              <button class="secondary" type="button" data-prev>назад</button>
+              <button class="primary" type="submit">сохранить</button>
+            </div>
+          </div>
+        </form>
+      </section>
     </section>
 
-    <section class="grid three">
-      <div class="card mini"><span>Доходы</span><b id="monthIncome">0 ₽</b></div>
-      <div class="card mini"><span>Расходы</span><b id="monthExpense">0 ₽</b></div>
-      <div class="card mini"><span>Разница</span><b id="monthDiff">0 ₽</b></div>
+    <section id="analyticsTab" class="tab-page">
+      <section class="panel-card">
+        <h2>аналитика</h2>
+        <div class="stats-row">
+          <div><span>доходы</span><b id="monthIncome">0 ₽</b></div>
+          <div><span>расходы</span><b id="monthExpense">0 ₽</b></div>
+          <div><span>разница</span><b id="monthDiff">0 ₽</b></div>
+        </div>
+      </section>
+
+      <section class="panel-card">
+        <h3>расходы по категориям</h3>
+        <div id="categoryBars" class="bars"><div class="empty">пока мало данных</div></div>
+      </section>
     </section>
 
-    <section class="card">
-      <h2>Счета</h2>
-      <div id="accounts" class="accounts"></div>
-    </section>
-
-    <section class="card">
-      <h2>Добавить операцию</h2>
-      <div class="toggle">
-        <button type="button" data-type="expense" class="active">Расход</button>
-        <button type="button" data-type="income">Доход</button>
-      </div>
-      <form id="operationForm">
-        <label>Сумма <input name="amount" type="number" inputmode="decimal" placeholder="450" required></label>
-        <label>Дата <input name="date" type="date" required></label>
-        <label>Категория <select id="category" name="category"></select></label>
-        <label>Счет <select id="account" name="account"></select></label>
-        <label>Комментарий <input name="comment" type="text" placeholder="кофе, такси, клиент"></label>
-        <button class="primary" type="submit">Сохранить</button>
-      </form>
-    </section>
-
-    <section class="card">
-      <h2>История</h2>
-      <div id="history" class="history"></div>
+    <section id="historyTab" class="tab-page">
+      <section class="panel-card">
+        <h2>история</h2>
+        <div id="history" class="history"></div>
+      </section>
     </section>
   </main>
+
+  <nav class="bottom-nav" aria-label="навигация">
+    <button class="active" type="button" data-tab="homeTab">главная</button>
+    <button type="button" data-tab="analyticsTab">аналитика</button>
+    <button type="button" data-tab="historyTab">история</button>
+  </nav>
 
   <script src="./app.js"></script>
 </body>
