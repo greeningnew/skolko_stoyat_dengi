@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <title>Сколько стоят деньги</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="app">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">личная финпанель</p>
+        <h1>Сколько стоят деньги</h1>
+      </div>
+      <button id="syncButton" class="ghost">Обновить</button>
+    </header>
+
+    <section class="card total-card">
+      <span>Всего денег</span>
+      <strong id="total">0 ₽</strong>
+      <small id="status">загрузка...</small>
+    </section>
+
+    <section class="grid three">
+      <div class="card mini"><span>Доходы</span><b id="monthIncome">0 ₽</b></div>
+      <div class="card mini"><span>Расходы</span><b id="monthExpense">0 ₽</b></div>
+      <div class="card mini"><span>Разница</span><b id="monthDiff">0 ₽</b></div>
+    </section>
+
+    <section class="card">
+      <h2>Счета</h2>
+      <div id="accounts" class="accounts"></div>
+    </section>
+
+    <section class="card">
+      <h2>Добавить операцию</h2>
+      <div class="toggle">
+        <button type="button" data-type="expense" class="active">Расход</button>
+        <button type="button" data-type="income">Доход</button>
+      </div>
+      <form id="operationForm">
+        <label>Сумма <input name="amount" type="number" inputmode="decimal" placeholder="450" required></label>
+        <label>Дата <input name="date" type="date" required></label>
+        <label>Категория <select id="category" name="category"></select></label>
+        <label>Счет <select id="account" name="account"></select></label>
+        <label>Комментарий <input name="comment" type="text" placeholder="кофе, такси, клиент"></label>
+        <button class="primary" type="submit">Сохранить</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>История</h2>
+      <div id="history" class="history"></div>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
