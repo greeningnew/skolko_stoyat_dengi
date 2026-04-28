@@ -1,9 +1,11 @@
 {
-  "name": "Сколько стоят деньги",
-  "short_name": "Деньги",
+  "name": "сколько стоят деньги",
+  "short_name": "деньги",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#070a14",
-  "theme_color": "#070a14",
-  "icons": []
+  "background_color": "#F6F7FB",
+  "theme_color": "#F6F7FB",
+  "icons": [
+    { "src": "./assets/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
 }
