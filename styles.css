@@ -65,14 +65,14 @@ input { color-scheme: dark; }
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 0;
 }
 .brand-logo {
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
-  filter: drop-shadow(0 0 14px rgba(123,92,255,.55));
+
+  filter: drop-shadow(0 0 6px rgba(138, 43, 226, 0.6))
+          drop-shadow(0 0 12px rgba(0, 191, 255, 0.4));
 }
 h1 {
   margin: 0;
