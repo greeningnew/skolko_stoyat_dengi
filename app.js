@@ -1,6 +1,9 @@
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzinZUX7K1sIveAC3-l-jUEAgBlgEUMT98UOe8D_c8wV0hUMsg8eB8AcZR6jHBtmXjb/exec';
 const API_TOKEN = '673-ov1P8j9pRWAKzEEEEdyEC5MunZSr';
 
+const MONTHS = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+const CHART_COLORS = ['#a855ff','#5e7fff','#5ee7ff','#ff5ac8','#7b5cff','#8b95ad','#36d7b7','#ffb86b'];
+
 const state = {
   operations: [],
   accounts: ['карта', 'наличка', 'крипта', 'другое'],
@@ -8,6 +11,7 @@ const state = {
   incomeCategories: ['зарплата','проект','возврат','подарок','крипта','другое'],
   monthlyLimit: 100000,
   step: 1,
+  selectedMonth: startOfMonth(new Date()),
   draft: {
     amount: '',
     category: 'еда',
@@ -28,9 +32,14 @@ const els = {
   monthIncome: document.querySelector('#monthIncome'),
   monthExpense: document.querySelector('#monthExpense'),
   monthDiff: document.querySelector('#monthDiff'),
-  categoryBars: document.querySelector('#categoryBars'),
+  donutCanvas: document.querySelector('#categoryDonut'),
+  donutTotal: document.querySelector('#donutTotal'),
+  categoryLegend: document.querySelector('#categoryLegend'),
   history: document.querySelector('#history'),
   syncButton: document.querySelector('#syncButton'),
+  prevMonthButton: document.querySelector('#prevMonthButton'),
+  currentMonthButton: document.querySelector('#currentMonthButton'),
+  nextMonthButton: document.querySelector('#nextMonthButton'),
   tabButtons: document.querySelectorAll('[data-tab]'),
   tabPages: document.querySelectorAll('.tab-page')
 };
@@ -43,10 +52,22 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function sameMonth(dateString) {
+function startOfMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function addMonths(date, delta) {
+  return new Date(date.getFullYear(), date.getMonth() + delta, 1);
+}
+
+function monthLabel(date, withYear = false) {
+  const name = MONTHS[date.getMonth()];
+  return withYear ? `${name} ${date.getFullYear()}` : name;
+}
+
+function sameSelectedMonth(dateString) {
   const d = new Date(dateString);
-  const n = new Date();
-  return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth();
+  return d.getFullYear() === state.selectedMonth.getFullYear() && d.getMonth() === state.selectedMonth.getMonth();
 }
 
 function api(action, params = {}) {
@@ -113,28 +134,85 @@ function renderBalance() {
   `).join('');
 }
 
+function getSelectedMonthOps() {
+  return state.operations.filter(op => sameSelectedMonth(op.date));
+}
+
+function renderMonthSwitcher() {
+  els.prevMonthButton.textContent = monthLabel(addMonths(state.selectedMonth, -1));
+  els.currentMonthButton.textContent = monthLabel(state.selectedMonth, true);
+  els.nextMonthButton.textContent = monthLabel(addMonths(state.selectedMonth, 1));
+}
+
+function drawDonut(rows, total) {
+  const canvas = els.donutCanvas;
+  const ctx = canvas.getContext('2d');
+  const size = canvas.width;
+  const center = size / 2;
+  const radius = 86;
+  const lineWidth = 34;
+
+  ctx.clearRect(0, 0, size, size);
+  ctx.lineWidth = lineWidth;
+  ctx.lineCap = 'round';
+
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(255,255,255,.08)';
+  ctx.arc(center, center, radius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  if (!rows.length || total <= 0) return;
+
+  let start = -Math.PI / 2;
+  rows.forEach(([name, value], index) => {
+    const slice = (value / total) * Math.PI * 2;
+    const end = start + slice - 0.035;
+
+    const gradient = ctx.createLinearGradient(40, 40, 180, 180);
+    gradient.addColorStop(0, CHART_COLORS[index % CHART_COLORS.length]);
+    gradient.addColorStop(1, CHART_COLORS[(index + 2) % CHART_COLORS.length]);
+
+    ctx.beginPath();
+    ctx.strokeStyle = gradient;
+    ctx.arc(center, center, radius, start, Math.max(start, end));
+    ctx.stroke();
+
+    start += slice;
+  });
+}
+
 function renderAnalytics() {
-  const monthOps = state.operations.filter(op => sameMonth(op.date));
+  renderMonthSwitcher();
+
+  const monthOps = getSelectedMonthOps();
   const monthIncome = monthOps.filter(op => op.type === 'income').reduce((sum, op) => sum + Number(op.amount), 0);
   const monthExpense = monthOps.filter(op => op.type === 'expense').reduce((sum, op) => sum + Number(op.amount), 0);
 
   els.monthIncome.textContent = money(monthIncome);
   els.monthExpense.textContent = money(monthExpense);
   els.monthDiff.textContent = money(monthIncome - monthExpense);
+  els.donutTotal.textContent = money(monthExpense);
 
   const byCategory = {};
   monthOps.filter(op => op.type === 'expense').forEach(op => {
     byCategory[op.category] = (byCategory[op.category] || 0) + Number(op.amount);
   });
-  const rows = Object.entries(byCategory).sort((a, b) => b[1] - a[1]).slice(0, 8);
-  const max = rows[0]?.[1] || 0;
 
-  els.categoryBars.innerHTML = rows.length ? rows.map(([name, value]) => `
-    <div class="bar-row">
-      <div class="bar-meta"><span>${name}</span><b>${money(value)}</b></div>
-      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(6, Math.round(value / max * 100))}%"></div></div>
-    </div>
-  `).join('') : '<div class="empty">пока мало данных</div>';
+  const rows = Object.entries(byCategory).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  drawDonut(rows, monthExpense);
+
+  els.categoryLegend.innerHTML = rows.length ? rows.map(([name, value], index) => {
+    const percent = monthExpense ? Math.round(value / monthExpense * 100) : 0;
+    const color = CHART_COLORS[index % CHART_COLORS.length];
+    return `
+      <div class="legend-row">
+        <i class="legend-dot" style="color:${color}; background:${color}"></i>
+        <span class="legend-name">${name}</span>
+        <span class="legend-value">${money(value)}</span>
+        <b class="legend-percent">${percent}%</b>
+      </div>
+    `;
+  }).join('') : '<div class="empty">пока мало данных</div>';
 }
 
 function renderHistory() {
@@ -288,6 +366,22 @@ els.amountInput.addEventListener('keydown', (event) => {
     if (validateStep()) setStep(2);
   }
 });
+
+els.prevMonthButton.addEventListener('click', () => {
+  state.selectedMonth = addMonths(state.selectedMonth, -1);
+  renderAnalytics();
+});
+
+els.nextMonthButton.addEventListener('click', () => {
+  state.selectedMonth = addMonths(state.selectedMonth, 1);
+  renderAnalytics();
+});
+
+els.currentMonthButton.addEventListener('click', () => {
+  state.selectedMonth = startOfMonth(new Date());
+  renderAnalytics();
+});
+
 els.dateInput.value = today();
 els.dateInput.addEventListener('change', () => state.draft.date = els.dateInput.value || today());
 els.syncButton.addEventListener('click', () => bootstrap().catch(err => setStatus('ошибка: ' + err.message)));
@@ -295,6 +389,7 @@ els.tabButtons.forEach(button => button.addEventListener('click', () => setTab(b
 
 renderChips();
 setStep(1);
+renderAnalytics();
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
