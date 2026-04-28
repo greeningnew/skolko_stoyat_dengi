@@ -1,9 +1,9 @@
 {
   "name": "Сколько стоят деньги",
   "short_name": "Деньги",
-  "start_url": "./index.html",
+  "start_url": "./",
   "display": "standalone",
-  "background_color": "#f3f5f8",
-  "theme_color": "#111827",
+  "background_color": "#070a14",
+  "theme_color": "#070a14",
   "icons": []
 }
