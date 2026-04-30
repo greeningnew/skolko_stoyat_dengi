@@ -122,8 +122,13 @@ function renderAccounts() {
   const balance = { карта: 0, наличка: 0, крипта: 0, другое: 0 };
   state.operations.forEach(op => {
     const key = op.account || 'другое';
-    if (!(key in balance)) balance[key] = 0;
-    balance[key] += op.type === 'income' ? Number(op.amount) : -Number(op.amount);
+   if (!(key in balance)) balance[key] = 0;
+
+if (op.type === 'income' || op.type === 'initial') {
+  balance[key] += Number(op.amount);
+} else if (op.type === 'expense') {
+  balance[key] -= Number(op.amount);
+}
   });
   const total = Object.values(balance).reduce((a, b) => a + b, 0);
   $('total').textContent = formatMoney(total);
