@@ -6,20 +6,21 @@ const state = {
   selectedMonth: new Date(),
   expenseStep: 1,
   incomeStep: 1,
-  expense: { type: 'expense', amount: '', category: 'еда', account: 'карта', date: '', comment: '' },
-  income: { type: 'income', amount: '', category: 'зарплата', account: 'карта', date: '', comment: '' },
+  analyticsType: 'expense',
+  expense: { type: 'expense', amount: '', category: 'продукты', account: 'карта', date: '', comment: '' },
+  income: { type: 'income', amount: '', category: 'зп nonteam', account: 'карта', date: '', comment: '' },
 };
 
 const expenseCategories = [
-  ['еда', '🍔'], ['транспорт', '🚗'], ['доставка', '🛵'], ['продукты', '🛒'],
-  ['подписки', '📺'], ['спорт', '🏋️'], ['здоровье', '💊'], ['одежда', '👕'],
-  ['развлечения', '🎮'], ['работа', '💼'], ['дом', '🏠'], ['другое', '•••'],
+  ['продукты', '🛒'], ['транспорт', '🚗'], ['еда вне дома', '🍔'], ['здоровье', '💊'],
+  ['спорт', '🏋️'], ['одежда', '👕'], ['подписки', '📺'], ['развлечения', '🎮'],
+  ['дом', '🏠'], ['другое', '•••'],
 ];
 const incomeCategories = [
-  ['зарплата', '💼'], ['фриланс', '⚡'], ['бизнес', '📈'], ['подарки', '🎁'], ['возврат', '↩️'], ['прочее', '•••'],
+  ['зп nonteam', '💼'], ['фриланс', '⚡'], ['подарки', '🎁'], ['прочее', '•••'],
 ];
-const accounts = [['карта', '💳'], ['наличка', '💵'], ['крипта', '₿'], ['другое', '•••']];
-const colors = ['#3B5BFF', '#6C8CFF', '#22C7A9', '#F59E0B', '#EF476F', '#8B5CF6', '#14B8A6', '#94A3B8', '#111827', '#60A5FA'];
+const accounts = [['карта', '💳'], ['наличка', '💵'], ['крипта', '🪙'], ['другое', '•••']];
+const colors = ['#3B5BFF', '#22C7A9', '#F59E0B', '#EF476F', '#8B5CF6', '#14B8A6', '#94A3B8', '#60A5FA', '#111827', '#6C8CFF'];
 const monthNames = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
 
 const $ = (id) => document.getElementById(id);
@@ -122,13 +123,13 @@ function renderAccounts() {
   const balance = { карта: 0, наличка: 0, крипта: 0, другое: 0 };
   state.operations.forEach(op => {
     const key = op.account || 'другое';
-   if (!(key in balance)) balance[key] = 0;
+    if (!(key in balance)) balance[key] = 0;
 
-if (op.type === 'income' || op.type === 'initial') {
-  balance[key] += Number(op.amount);
-} else if (op.type === 'expense') {
-  balance[key] -= Number(op.amount);
-}
+    if (op.type === 'income' || op.type === 'initial') {
+      balance[key] += Number(op.amount);
+    } else if (op.type === 'expense') {
+      balance[key] -= Number(op.amount);
+    }
   });
   const total = Object.values(balance).reduce((a, b) => a + b, 0);
   $('total').textContent = formatMoney(total);
@@ -180,17 +181,33 @@ function renderAnalytics() {
   const prevOps = monthOps(-1);
   const income = sumByType(ops, 'income');
   const expense = sumByType(ops, 'expense');
-  const prevExpense = sumByType(prevOps, 'expense');
+  const net = income - expense;
+  const activeType = state.analyticsType || 'expense';
+  const currentTotal = activeType === 'income' ? income : expense;
+  const prevTotal = sumByType(prevOps, activeType);
   const daysPassed = state.selectedMonth.getMonth() === new Date().getMonth() && state.selectedMonth.getFullYear() === new Date().getFullYear()
     ? new Date().getDate()
     : new Date(state.selectedMonth.getFullYear(), state.selectedMonth.getMonth() + 1, 0).getDate();
+
   $('activeMonthLabel').textContent = `${monthNames[state.selectedMonth.getMonth()]} ${state.selectedMonth.getFullYear()}`;
   $('analyticsIncome').textContent = formatMoney(income);
   $('analyticsExpense').textContent = formatMoney(expense);
-  $('avgDailyExpense').textContent = formatMoney(expense / Math.max(daysPassed, 1));
-  $('monthCompare').textContent = prevExpense ? `${expense >= prevExpense ? '+' : ''}${Math.round((expense - prevExpense) / prevExpense * 100)}%` : '—';
-  renderDonut('expenseChart', 'expenseLegend', groupByCategory(ops, 'expense'), expense);
-  renderDonut('incomeChart', 'incomeLegend', groupByCategory(ops, 'income'), income);
+  $('analyticsNet').textContent = formatMoney(net);
+  $('analyticsNet').classList.toggle('negative', net < 0);
+
+  document.querySelectorAll('[data-analytics-type]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.analyticsType === activeType);
+  });
+
+  const compare = prevTotal ? `${currentTotal >= prevTotal ? '+' : ''}${Math.round((currentTotal - prevTotal) / prevTotal * 100)}%` : '—';
+  const avgLabel = activeType === 'income' ? 'средний доход / день' : 'средний расход / день';
+  $('analyticsDetailList').innerHTML = `
+    <div><span>${avgLabel}</span><strong>${formatMoney(currentTotal / Math.max(daysPassed, 1))}</strong></div>
+    <div><span>к прошлому месяцу</span><strong>${compare}</strong></div>
+  `;
+
+  $('categoryChartTitle').textContent = activeType === 'income' ? 'доходы по категориям' : 'расходы по категориям';
+  renderDonut('categoryChart', 'categoryLegend', groupByCategory(ops, activeType), currentTotal);
 }
 function renderDonut(canvasId, legendId, data, total) {
   const canvas = $(canvasId);
@@ -233,7 +250,7 @@ function renderHistory() {
   if (!rows.length) { list.innerHTML = '<div class="empty-state">история пока пустая</div>'; return; }
   list.innerHTML = rows.map(op => {
     const icon = [...expenseCategories, ...incomeCategories].find(([name]) => name === op.category)?.[1] || '•';
-    const sign = op.type === 'income' ? '+' : '-';
+    const sign = (op.type === 'income' || op.type === 'initial') ? '+' : '-';
     const date = operationDate(op).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
     return `<div class="history-item">
       <div class="history-title"><strong>${icon} ${op.category}</strong><span class="history-meta">${date} · ${op.account}${op.comment ? ' · ' + op.comment : ''}</span></div>
@@ -242,6 +259,15 @@ function renderHistory() {
   }).join('');
 }
 function renderAll() { renderAccounts(); renderForms(); renderAnalytics(); renderHistory(); }
+
+function showToast(message) {
+  const toast = $('toast');
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.add('show');
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => toast.classList.remove('show'), 2000);
+}
 
 function bindEvents() {
   $('syncButton').addEventListener('click', loadData);
@@ -262,12 +288,17 @@ function bindEvents() {
   document.querySelectorAll('[data-back="income"]').forEach(btn => btn.addEventListener('click', () => setIncomeStep(state.incomeStep - 1)));
   $('prevMonth').addEventListener('click', () => { state.selectedMonth.setMonth(state.selectedMonth.getMonth() - 1); renderAnalytics(); });
   $('nextMonth').addEventListener('click', () => { state.selectedMonth.setMonth(state.selectedMonth.getMonth() + 1); renderAnalytics(); });
+  document.querySelectorAll('[data-analytics-type]').forEach(btn => btn.addEventListener('click', () => {
+    state.analyticsType = btn.dataset.analyticsType;
+    renderAnalytics();
+  }));
 
   $('expenseForm').addEventListener('submit', async e => {
     e.preventDefault();
     const op = { type: 'expense', amount: parseAmount($('expenseAmount').value), category: state.expense.category, account: state.expense.account, date: $('expenseDate').value || todayISO(), comment: $('expenseComment').value.trim(), createdAt: new Date().toISOString() };
     if (!op.amount) return;
     await saveOperation(op);
+    showToast('трата добавлена');
     $('expenseAmount').value = ''; $('expenseComment').value = ''; $('expenseDate').value = todayISO(); setExpenseStep(1);
   });
   $('incomeForm').addEventListener('submit', async e => {
@@ -275,6 +306,7 @@ function bindEvents() {
     const op = { type: 'income', amount: parseAmount($('incomeAmount').value), category: state.income.category, account: state.income.account, date: $('incomeDate').value || todayISO(), comment: $('incomeComment').value.trim(), createdAt: new Date().toISOString() };
     if (!op.amount) return;
     await saveOperation(op);
+    showToast('доход добавлен');
     $('incomeAmount').value = ''; $('incomeComment').value = ''; $('incomeDate').value = todayISO(); setIncomeStep(1);
   });
 }
