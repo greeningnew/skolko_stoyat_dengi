@@ -65,16 +65,18 @@ function api(action, payload = {}) {
 
     const callbackName = 'jsonp_' + Date.now() + '_' + Math.random().toString(36).slice(2);
 
-    window[callbackName] = (data) => {
+    const cleanup = (script) => {
       delete window[callbackName];
-      script.remove();
+      if (script && script.parentNode) script.parentNode.removeChild(script);
+    };
+
+    window[callbackName] = (data) => {
+      cleanup(script);
 
       if (data.status === 'success') return resolve(data);
-
       if (data.ok === false || data.status === 'error') {
         return reject(new Error(data.error || data.message || 'Ошибка API'));
       }
-
       resolve(data);
     };
 
@@ -82,14 +84,13 @@ function api(action, payload = {}) {
       callback: callbackName,
       token: API_TOKEN,
       action,
-      payload: JSON.stringify(payload)
+      payload: JSON.stringify(payload),
     });
 
     const script = document.createElement('script');
     script.src = `${APPS_SCRIPT_URL}?${params.toString()}`;
     script.onerror = () => {
-      delete window[callbackName];
-      script.remove();
+      cleanup(script);
       reject(new Error('Не удалось подключиться к Google Apps Script'));
     };
 
@@ -100,7 +101,7 @@ function api(action, payload = {}) {
 async function loadData() {
   $('status').textContent = 'загрузка...';
   try {
-    const data = await api('list');
+    const data = await api('bootstrap');
     const rows = data.operations || data.rows || data.data || [];
     state.operations = rows.map(normalizeOperation);
     $('status').textContent = 'синхронизировано';
@@ -112,7 +113,7 @@ async function loadData() {
 
 async function saveOperation(op) {
   const payload = { operation: op, ...op };
-  await api('add', payload);
+  await api('addOperation', payload);
   state.operations.unshift(normalizeOperation(op));
   renderAll();
 }
