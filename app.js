@@ -56,16 +56,45 @@ function normalizeOperation(raw) {
   };
 }
 
-async function api(action, payload = {}) {
-  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes('PASTE')) throw new Error('Не вставлена ссылка Apps Script');
-  const body = JSON.stringify({ token: API_TOKEN, action, ...payload });
-  const res = await fetch(APPS_SCRIPT_URL, { method: 'POST', body });
-  const text = await res.text();
-  let data;
-  try { data = JSON.parse(text); } catch { data = { ok: false, error: text }; }
-  if (data.status === 'success') return data;
-  if (data.ok === false || data.status === 'error') throw new Error(data.error || data.message || 'Ошибка API');
-  return data;
+function api(action, payload = {}) {
+  return new Promise((resolve, reject) => {
+    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes('PASTE')) {
+      reject(new Error('Не вставлена ссылка Apps Script'));
+      return;
+    }
+
+    const callbackName = 'jsonp_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+
+    window[callbackName] = (data) => {
+      delete window[callbackName];
+      script.remove();
+
+      if (data.status === 'success') return resolve(data);
+
+      if (data.ok === false || data.status === 'error') {
+        return reject(new Error(data.error || data.message || 'Ошибка API'));
+      }
+
+      resolve(data);
+    };
+
+    const params = new URLSearchParams({
+      callback: callbackName,
+      token: API_TOKEN,
+      action,
+      payload: JSON.stringify(payload)
+    });
+
+    const script = document.createElement('script');
+    script.src = `${APPS_SCRIPT_URL}?${params.toString()}`;
+    script.onerror = () => {
+      delete window[callbackName];
+      script.remove();
+      reject(new Error('Не удалось подключиться к Google Apps Script'));
+    };
+
+    document.body.appendChild(script);
+  });
 }
 
 async function loadData() {
