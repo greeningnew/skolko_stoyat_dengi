@@ -65,10 +65,10 @@
             <label class="field-label" for="expenseDate">дата</label>
             <input id="expenseDate" class="text-input" type="date" />
             <label class="field-label" for="expenseComment">комментарий</label>
-            <input id="expenseComment" class="text-input" type="text" placeholder="бензин, кофе, клиент" />
+            <input id="expenseComment" class="text-input" type="text"  />
             <div class="flow-actions">
               <button type="button" class="secondary-btn" data-back="expense">назад</button>
-              <button type="submit" class="primary-btn">сохранить</button>
+              <button type="submit" class="primary-btn">зафиксировать</button>
             </div>
           </div>
         </form>
@@ -113,10 +113,10 @@
             <label class="field-label" for="incomeDate">дата</label>
             <input id="incomeDate" class="text-input" type="date" />
             <label class="field-label" for="incomeComment">комментарий</label>
-            <input id="incomeComment" class="text-input" type="text" placeholder="аванс, проект, возврат" />
+            <input id="incomeComment" class="text-input" type="text"  />
             <div class="flow-actions">
               <button type="button" class="secondary-btn" data-back="income">назад</button>
-              <button type="submit" class="primary-btn">сохранить</button>
+              <button type="submit" class="primary-btn">зафиксировать</button>
             </div>
           </div>
         </form>
@@ -131,28 +131,24 @@
           <strong id="activeMonthLabel">апрель 2026</strong>
           <button id="nextMonth" type="button" aria-label="Следующий месяц">›</button>
         </div>
-        <div class="summary-list">
+        <div class="summary-list summary-main">
           <div><span>доходы</span><strong id="analyticsIncome">0 ₽</strong></div>
           <div><span>расходы</span><strong id="analyticsExpense">0 ₽</strong></div>
-          <div><span>средний расход / день</span><strong id="avgDailyExpense">0 ₽</strong></div>
-          <div><span>к прошлому месяцу</span><strong id="monthCompare">—</strong></div>
+          <div><span>остаток</span><strong id="analyticsNet">0 ₽</strong></div>
+        </div>
+        <div class="analytics-toggle" aria-label="Тип аналитики">
+          <button id="analyticsExpenseTab" class="active" type="button" data-analytics-type="expense">расходы</button>
+          <button id="analyticsIncomeTab" type="button" data-analytics-type="income">доходы</button>
         </div>
       </section>
 
       <section class="analytics-card">
-        <h2>расходы по категориям</h2>
+        <h2 id="categoryChartTitle">расходы по категориям</h2>
+        <div id="analyticsDetailList" class="summary-list detail-list"></div>
         <div class="chart-wrap">
-          <canvas id="expenseChart" width="240" height="240"></canvas>
+          <canvas id="categoryChart" width="240" height="240"></canvas>
         </div>
-        <div id="expenseLegend" class="legend-list"></div>
-      </section>
-
-      <section class="analytics-card">
-        <h2>доходы по категориям</h2>
-        <div class="chart-wrap">
-          <canvas id="incomeChart" width="240" height="240"></canvas>
-        </div>
-        <div id="incomeLegend" class="legend-list"></div>
+        <div id="categoryLegend" class="legend-list"></div>
       </section>
     </section>
 
@@ -171,6 +167,7 @@
     </nav>
   </main>
 
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="./app.js"></script>
 </body>
 </html>
