@@ -164,3 +164,66 @@ h2 { margin: 0; font-size: 21px; line-height: 1.1; letter-spacing: -0.035em; tex
   .balance-card > strong { font-size: 42px; }
   .chip { font-size: 12px; padding: 8px 9px; }
 }
+
+/* v7 fixes */
+.primary-btn, .secondary-btn, .month-switcher button, .nav-btn, .icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.money-input-wrap { padding-left: 12px; }
+.chip { padding: 8px 10px; font-size: 12.5px; }
+.accounts-chips .chip { min-width: auto; }
+.month-switcher button { line-height: 1; padding-bottom: 2px; }
+.analytics-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 5px;
+  border-radius: 18px;
+  background: #f4f6fb;
+  border: 1px solid var(--line);
+}
+.analytics-toggle button {
+  height: 42px;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 850;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.analytics-toggle button.active {
+  background: var(--blue);
+  color: #fff;
+}
+.summary-main { margin-top: 12px; }
+.detail-list { margin-top: 12px; }
+#analyticsNet.negative { color: #dc2626; }
+.history-amount.initial { color: #2563eb; }
+.toast {
+  position: fixed;
+  z-index: 100;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(.96);
+  opacity: 0;
+  pointer-events: none;
+  min-width: 180px;
+  max-width: calc(100% - 56px);
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, .92);
+  color: #fff;
+  font-weight: 850;
+  text-align: center;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, .22);
+  transition: opacity .18s ease, transform .18s ease;
+}
+.toast.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
