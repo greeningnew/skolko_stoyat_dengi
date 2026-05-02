@@ -27,6 +27,18 @@ body {
 button, input { font: inherit; }
 button { cursor: pointer; border: 0; }
 
+.input {
+  width: 100%;
+  height: 48px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: #f8fafc;
+  color: var(--text);
+  padding: 0 14px;
+  outline: 0;
+  box-sizing: border-box;
+}
+
 .app {
   width: min(100%, 560px);
   min-height: 100vh;
