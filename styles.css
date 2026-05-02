@@ -479,3 +479,55 @@ h2 { margin: 0; font-size: 21px; line-height: 1.1; letter-spacing: -0.035em; tex
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* v13 analytics switch motion */
+.analytics-toggle {
+  position: relative;
+  overflow: hidden;
+}
+
+.analytics-toggle button {
+  transition: transform .16s ease, box-shadow .18s ease, background .18s ease, color .18s ease;
+}
+
+.analytics-toggle button.active {
+  transform: scale(1.01);
+}
+
+.analytics-main-card.analytics-switching .compact-summary,
+.analytics-main-card.analytics-switching .chart-title,
+.analytics-main-card.analytics-switching .chart-wrap,
+.analytics-main-card.analytics-switching .legend-list {
+  animation: analyticsContentIn .34s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.analytics-main-card.analytics-switching .chart-wrap {
+  animation-delay: .03s;
+}
+
+.analytics-main-card.analytics-switching .legend-list {
+  animation-delay: .06s;
+}
+
+@keyframes analyticsContentIn {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(.985);
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.category-chart-pulse {
+  animation: chartPulse .34s ease both;
+}
+
+@keyframes chartPulse {
+  0% { transform: scale(.985); opacity: .72; }
+  100% { transform: scale(1); opacity: 1; }
+}
