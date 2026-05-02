@@ -26,6 +26,7 @@
         </div>
         <strong id="total">0 ₽</strong>
         <div id="accountInline" class="account-inline"></div>
+        <div class="today-spent">сегодня потрачено: <strong id="todaySpent">0 ₽</strong></div>
       </section>
 
       <section class="entry-card">
@@ -124,28 +125,26 @@
     </section>
 
     <section id="screen-analytics" class="screen">
-      <section class="analytics-card">
+      <section class="analytics-card analytics-main-card">
         <h2>аналитика</h2>
         <div class="month-switcher">
           <button id="prevMonth" type="button" aria-label="Предыдущий месяц">‹</button>
           <strong id="activeMonthLabel">апрель 2026</strong>
           <button id="nextMonth" type="button" aria-label="Следующий месяц">›</button>
         </div>
-        <div class="summary-list summary-main">
-          <div><span>доходы</span><strong id="analyticsIncome">0 ₽</strong></div>
-          <div><span>расходы</span><strong id="analyticsExpense">0 ₽</strong></div>
-          <div><span>остаток</span><strong id="analyticsNet">0 ₽</strong></div>
-        </div>
+
         <div class="analytics-toggle" aria-label="Тип аналитики">
           <button id="analyticsExpenseTab" class="active" type="button" data-analytics-type="expense">расходы</button>
           <button id="analyticsIncomeTab" type="button" data-analytics-type="income">доходы</button>
         </div>
-      </section>
 
-      <section class="analytics-card">
-        <h2 id="categoryChartTitle">расходы по категориям</h2>
-        <div id="analyticsDetailList" class="summary-list detail-list"></div>
-        <div class="chart-wrap">
+        <div class="compact-summary" aria-label="Сводка за месяц">
+          <span>доходы <strong id="analyticsIncome">0 ₽</strong></span>
+          <span>расходы <strong id="analyticsExpense">0 ₽</strong></span>
+        </div>
+
+        <h3 id="categoryChartTitle" class="chart-title">расходы по категориям</h3>
+        <div class="chart-wrap compact-chart">
           <canvas id="categoryChart" width="240" height="240"></canvas>
         </div>
         <div id="categoryLegend" class="legend-list"></div>
@@ -155,7 +154,19 @@
     <section id="screen-history" class="screen">
       <section class="analytics-card">
         <h2>история</h2>
-        <div id="historyList" class="history-list"></div>
+        <div class="history-filters">
+          <select id="historyAccountFilter" class="filter-select" aria-label="Фильтр по счету">
+            <option value="all">все счета</option>
+            <option value="карта">карта</option>
+            <option value="наличка">наличка</option>
+            <option value="крипта">крипта</option>
+            <option value="другое">другое</option>
+          </select>
+          <select id="historyCategoryFilter" class="filter-select" aria-label="Фильтр по категории">
+            <option value="all">все категории</option>
+          </select>
+        </div>
+        <div id="historyList" class="history-list grouped"></div>
       </section>
     </section>
 
