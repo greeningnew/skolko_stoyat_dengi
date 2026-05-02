@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skolko-stoyat-dengi-v12-ux';
+const CACHE_NAME = 'skolko-stoyat-dengi-v13-analytics';
 const ASSETS = ['./', './index.html', './styles.css', './app.js', './manifest.webmanifest', './assets/logo.svg'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
