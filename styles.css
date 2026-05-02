@@ -299,3 +299,94 @@ h2 { margin: 0; font-size: 21px; line-height: 1.1; letter-spacing: -0.035em; tex
   .history-filters { grid-template-columns: 1fr; }
   .compact-summary { justify-content: flex-start; }
 }
+
+/* v10 goals */
+.bottom-nav { grid-template-columns: repeat(5, 1fr); }
+.nav-btn { font-size: 12px; }
+.section-subtitle {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+.goals-card { display: grid; gap: 14px; }
+.goal-form {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 20px;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+}
+.goal-form .field-label { margin: 0; }
+.goal-target-row {
+  display: grid;
+  grid-template-columns: 1fr .72fr;
+  gap: 8px;
+  align-items: center;
+}
+.goal-target-row .primary-btn { margin: 0; min-height: 48px; }
+.goals-list {
+  display: grid;
+  gap: 10px;
+}
+.goal-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 26px rgba(15,23,42,.05);
+}
+.goal-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.goal-card-top div { display: grid; gap: 4px; min-width: 0; }
+.goal-card-top strong {
+  font-size: 16px;
+  letter-spacing: -0.025em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.goal-card-top span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 750;
+}
+.goal-card-top b {
+  color: var(--blue);
+  font-size: 16px;
+  letter-spacing: -0.03em;
+}
+.goal-progress {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf0f6;
+}
+.goal-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--blue);
+}
+.goal-add-form {
+  display: grid;
+  grid-template-columns: 1fr .78fr;
+  gap: 8px;
+  align-items: center;
+}
+.goal-add-form .secondary-btn {
+  min-height: 48px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+@media (max-width: 380px) {
+  .nav-btn { font-size: 11px; }
+  .goal-target-row, .goal-add-form { grid-template-columns: 1fr; }
+}
