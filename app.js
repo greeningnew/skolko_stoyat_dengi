@@ -3,6 +3,7 @@ const API_TOKEN = '673-ov1P8j9pRWAKzEEEEdyEC5MunZSr';
 
 const state = {
   operations: [],
+  goals: [],
   selectedMonth: new Date(),
   expenseStep: 1,
   incomeStep: 1,
@@ -89,6 +90,26 @@ function normalizeOperation(raw) {
   };
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function normalizeGoal(raw) {
+  return {
+    id: raw.id || crypto.randomUUID?.() || String(Math.random()),
+    name: raw.name || 'цель',
+    target: Math.max(0, Number(raw.target || 0)),
+    current: Math.max(0, Number(raw.current || 0)),
+    createdAt: raw.createdAt || new Date().toISOString(),
+    updatedAt: raw.updatedAt || raw.createdAt || new Date().toISOString(),
+  };
+}
+
 function api(action, payload = {}) {
   return new Promise((resolve, reject) => {
     if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes('PASTE')) {
@@ -137,6 +158,7 @@ async function loadData() {
     const data = await api('bootstrap');
     const rows = data.operations || data.rows || data.data || [];
     state.operations = rows.map(normalizeOperation);
+    state.goals = (data.goals || []).map(normalizeGoal);
     $('status').textContent = 'синхронизировано';
   } catch (err) {
     $('status').textContent = `ошибка: ${err.message}`;
@@ -148,6 +170,25 @@ async function saveOperation(op) {
   const payload = { operation: op, ...op };
   await api('addOperation', payload);
   state.operations.unshift(normalizeOperation(op));
+  renderAll();
+}
+
+async function saveGoal(goal) {
+  const normalized = normalizeGoal(goal);
+  await api('addGoal', normalized);
+  state.goals.unshift(normalized);
+  renderAll();
+}
+
+async function addGoalProgress(id, amount) {
+  const value = parseAmount(amount);
+  if (!id || !value) return;
+  await api('addGoalProgress', { id, amount: value, updatedAt: new Date().toISOString() });
+  const goal = state.goals.find(item => String(item.id) === String(id));
+  if (goal) {
+    goal.current = Math.max(0, Number(goal.current || 0) + value);
+    goal.updatedAt = new Date().toISOString();
+  }
   renderAll();
 }
 
@@ -278,6 +319,50 @@ function renderHistoryFilters() {
   state.historyCategory = select.value;
 }
 
+
+function renderGoals() {
+  const list = $('goalsList');
+  if (!list) return;
+
+  const goals = [...state.goals].sort((a, b) => Number(b.current || 0) / Math.max(Number(b.target || 0), 1) - Number(a.current || 0) / Math.max(Number(a.target || 0), 1));
+  if (!goals.length) {
+    list.innerHTML = '<div class="empty-state">целей пока нет</div>';
+    return;
+  }
+
+  list.innerHTML = goals.map(goal => {
+    const target = Math.max(Number(goal.target || 0), 0);
+    const current = Math.max(Number(goal.current || 0), 0);
+    const percent = target ? Math.min(100, Math.round(current / target * 100)) : 0;
+    const safeId = escapeHtml(goal.id);
+    return `<article class="goal-card" data-goal-id="${safeId}">
+      <div class="goal-card-top">
+        <div>
+          <strong>${escapeHtml(goal.name)}</strong>
+          <span>${formatMoney(current)} / ${formatMoney(target)}</span>
+        </div>
+        <b>${percent}%</b>
+      </div>
+      <div class="goal-progress" aria-label="Прогресс цели"><i style="width:${percent}%"></i></div>
+      <form class="goal-add-form" data-goal-id="${safeId}">
+        <input class="text-input goal-add-input" inputmode="decimal" autocomplete="off" placeholder="сумма" />
+        <button type="submit" class="secondary-btn">+ добавить</button>
+      </form>
+    </article>`;
+  }).join('');
+
+  list.querySelectorAll('.goal-add-form').forEach(form => {
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const input = form.querySelector('.goal-add-input');
+      const amount = parseAmount(input.value);
+      if (!amount) return;
+      await addGoalProgress(form.dataset.goalId, amount);
+      showToast('добавлено в цель');
+    });
+  });
+}
+
 function renderHistory() {
   renderHistoryFilters();
   const list = $('historyList');
@@ -322,7 +407,7 @@ function renderHistory() {
     </section>`;
   }).join('');
 }
-function renderAll() { renderAccounts(); renderForms(); renderAnalytics(); renderHistory(); }
+function renderAll() { renderAccounts(); renderForms(); renderAnalytics(); renderGoals(); renderHistory(); }
 
 function showToast(message) {
   const toast = $('toast');
@@ -380,6 +465,17 @@ function bindEvents() {
     await saveOperation(op);
     showToast('доход добавлен');
     $('incomeAmount').value = ''; $('incomeComment').value = ''; $('incomeDate').value = todayISO(); setIncomeStep(1);
+  });
+
+  if ($('goalForm')) $('goalForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const name = $('goalName').value.trim();
+    const target = parseAmount($('goalTarget').value);
+    if (!name || !target) return;
+    await saveGoal({ name, target, current: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+    showToast('цель создана');
+    $('goalName').value = '';
+    $('goalTarget').value = '';
   });
 }
 
