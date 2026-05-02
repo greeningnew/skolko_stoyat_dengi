@@ -171,6 +171,7 @@ async function saveOperation(op) {
   await api('addOperation', payload);
   state.operations.unshift(normalizeOperation(op));
   renderAll();
+  triggerBalanceFlash();
 }
 
 async function saveGoal(goal) {
@@ -192,6 +193,44 @@ async function addGoalProgress(id, amount) {
   renderAll();
 }
 
+
+function animateValue(el, start, end, duration = 420) {
+  if (!el) return;
+  const from = Number(start || 0);
+  const to = Number(end || 0);
+  if (from === to) {
+    el.textContent = formatMoney(to);
+    return;
+  }
+
+  let startTime = null;
+  const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+
+  function step(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const progress = Math.min((timestamp - startTime) / duration, 1);
+    const eased = easeOutCubic(progress);
+    const value = from + (to - from) * eased;
+    el.textContent = formatMoney(value);
+    if (progress < 1) requestAnimationFrame(step);
+  }
+
+  requestAnimationFrame(step);
+}
+
+function triggerBalanceFlash() {
+  const card = document.querySelector('.balance-card');
+  if (!card) return;
+  card.classList.remove('flash');
+  void card.offsetWidth;
+  card.classList.add('flash');
+  setTimeout(() => card.classList.remove('flash'), 340);
+}
+
+function haptic(ms = 10) {
+  if (navigator.vibrate) navigator.vibrate(ms);
+}
+
 function renderAccounts() {
   const balance = { карта: 0, наличка: 0, крипта: 0, другое: 0 };
   state.operations.forEach(op => {
@@ -210,7 +249,12 @@ function renderAccounts() {
     .filter(op => op.type === 'expense' && dateKey(op) === today)
     .reduce((sum, op) => sum + Number(op.amount || 0), 0);
 
-  $('total').textContent = formatMoney(total);
+  const totalEl = $('total');
+  const previousTotal = Number(totalEl?.dataset.value || 0);
+  if (totalEl) {
+    animateValue(totalEl, previousTotal, total);
+    totalEl.dataset.value = String(total);
+  }
   if ($('todaySpent')) $('todaySpent').textContent = formatMoney(todaySpent);
   $('accountInline').innerHTML = ['карта', 'наличка', 'крипта'].map(name => `
     <div class="account-pill"><span>${name}</span><strong>${formatMoney(balance[name] || 0)}</strong></div>
@@ -359,6 +403,7 @@ function renderGoals() {
       if (!amount) return;
       await addGoalProgress(form.dataset.goalId, amount);
       showToast('добавлено в цель');
+      haptic(10);
     });
   });
 }
@@ -413,6 +458,8 @@ function showToast(message) {
   const toast = $('toast');
   if (!toast) return;
   toast.textContent = message;
+  toast.classList.remove('show');
+  void toast.offsetWidth;
   toast.classList.add('show');
   clearTimeout(showToast.timer);
   showToast.timer = setTimeout(() => toast.classList.remove('show'), 2000);
@@ -456,6 +503,7 @@ function bindEvents() {
     if (!op.amount) return;
     await saveOperation(op);
     showToast('трата добавлена');
+    haptic(10);
     $('expenseAmount').value = ''; $('expenseComment').value = ''; $('expenseDate').value = todayISO(); setExpenseStep(1);
   });
   $('incomeForm').addEventListener('submit', async e => {
@@ -464,6 +512,7 @@ function bindEvents() {
     if (!op.amount) return;
     await saveOperation(op);
     showToast('доход добавлен');
+    haptic(10);
     $('incomeAmount').value = ''; $('incomeComment').value = ''; $('incomeDate').value = todayISO(); setIncomeStep(1);
   });
 
@@ -474,6 +523,7 @@ function bindEvents() {
     if (!name || !target) return;
     await saveGoal({ name, target, current: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
     showToast('цель создана');
+    haptic(10);
     $('goalName').value = '';
     $('goalTarget').value = '';
   });
