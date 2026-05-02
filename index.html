@@ -156,14 +156,13 @@
         <div class="goals-head">
           <div>
             <h2>фин. цели</h2>
-            <p class="section-subtitle">накопления без влияния на общий баланс</p>
           </div>
         </div>
 
         <form id="goalForm" class="goal-form">
           <label class="field-label" for="goalName">цель</label>
-          <input id="goalName" class="text-input" type="text" autocomplete="off" placeholder="например, подушка" />
-          <label class="field-label" for="goalTarget">сумма цели</label>
+          <input id="goalName" type="text">
+          <label class="field-label" for="goalTarget">сумма</label>
           <div class="goal-target-row">
             <input id="goalTarget" class="text-input" inputmode="decimal" autocomplete="off" placeholder="0" />
             <button type="submit" class="primary-btn">создать</button>
@@ -197,7 +196,7 @@
       <button class="nav-btn active" data-screen="home" type="button">главная</button>
       <button class="nav-btn" data-screen="income" type="button">доходы</button>
       <button class="nav-btn" data-screen="analytics" type="button">аналитика</button>
-      <button class="nav-btn" data-screen="goals" type="button">цели</button>
+      <button class="nav-btn" data-screen="goals" type="button">фин. цели</button>
       <button class="nav-btn" data-screen="history" type="button">история</button>
     </nav>
   </main>
