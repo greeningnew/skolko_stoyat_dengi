@@ -54,7 +54,7 @@ button { cursor: pointer; border: 0; }
   padding: 8px 2px 18px;
 }
 .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.brand-logo { width: 42px; height: 42px; object-fit: contain; display: block; }
+.brand-logo { width: 46px; height: 46px; object-fit: contain; display: block; }
 h1 { margin: 0; font-size: 22px; line-height: 1; letter-spacing: -0.04em; text-transform: lowercase; }
 h2 { margin: 0; font-size: 21px; line-height: 1.1; letter-spacing: -0.035em; text-transform: lowercase; }
 .icon-button {
