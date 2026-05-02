@@ -14,7 +14,7 @@ const state = {
 };
 
 const expenseCategories = [
-  ['продукты', '🛒'], ['транспорт', '🚗'], ['еда вне дома', '🍔'], ['здоровье', '💊'],
+  ['продукты', '🛒'], ['транспорт', '🚗'], ['еда вне дома', '🍔'], ['курение', '🚬'], ['здоровье', '💊'],
   ['спорт', '🏋️'], ['одежда', '👕'], ['подписки', '📺'], ['развлечения', '🎮'],
   ['дом', '🏠'], ['кредиты', '🏦'], ['бизнес', '💼'], ['долг', '💸'], ['другое', '•••'],
 ];
@@ -39,11 +39,41 @@ function todayISO() {
   const tz = d.getTimezoneOffset() * 60000;
   return new Date(d.getTime() - tz).toISOString().slice(0, 10);
 }
+function parseDateSafe(raw) {
+  if (!raw) return null;
+  if (raw instanceof Date && !Number.isNaN(raw.getTime())) return raw;
+
+  const value = String(raw).trim();
+  if (!value) return null;
+
+  // Google Sheets / ISO: 2026-05-02 or 2026-05-02T16:42:00.000Z
+  const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const [, y, m, d] = isoMatch;
+    return new Date(Number(y), Number(m) - 1, Number(d));
+  }
+
+  // Russian/manual format: 02.05.2026
+  const ruMatch = value.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  if (ruMatch) {
+    const [, d, m, y] = ruMatch;
+    return new Date(Number(y), Number(m) - 1, Number(d));
+  }
+
+  const fallback = new Date(value);
+  return Number.isNaN(fallback.getTime()) ? null : fallback;
+}
+function dateKey(op) {
+  const date = parseDateSafe(op.date) || parseDateSafe(op.createdAt) || parseDateSafe(op.timestamp);
+  if (!date) return '';
+  const tz = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - tz).toISOString().slice(0, 10);
+}
 function operationDate(op) {
-  const raw = op.date || op.createdAt || op.timestamp || op[0];
-  return raw ? new Date(raw) : new Date();
+  return parseDateSafe(op.date) || parseDateSafe(op.createdAt) || parseDateSafe(op.timestamp) || new Date(0);
 }
 function isSameMonth(date, base) {
+  if (!date || Number.isNaN(date.getTime())) return false;
   return date.getFullYear() === base.getFullYear() && date.getMonth() === base.getMonth();
 }
 function normalizeOperation(raw) {
@@ -136,7 +166,7 @@ function renderAccounts() {
   const total = Object.values(balance).reduce((a, b) => a + b, 0);
   const today = todayISO();
   const todaySpent = state.operations
-    .filter(op => op.type === 'expense' && (op.date || '').slice(0, 10) === today)
+    .filter(op => op.type === 'expense' && dateKey(op) === today)
     .reduce((sum, op) => sum + Number(op.amount || 0), 0);
 
   $('total').textContent = formatMoney(total);
@@ -262,14 +292,14 @@ function renderHistory() {
 
   const groups = new Map();
   rows.forEach(op => {
-    const key = (op.date || operationDate(op).toISOString()).slice(0, 10);
+    const key = dateKey(op) || 'no-date';
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(op);
   });
 
-  list.innerHTML = [...groups.entries()].map(([dateKey, items]) => {
-    const date = new Date(dateKey + 'T00:00:00');
-    const title = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+  list.innerHTML = [...groups.entries()].map(([dateKeyValue, items]) => {
+    const date = parseDateSafe(dateKeyValue);
+    const title = date ? date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : 'без даты';
     const expenseTotal = items.filter(op => op.type === 'expense').reduce((s, op) => s + Number(op.amount || 0), 0);
     const incomeTotal = items.filter(op => op.type === 'income').reduce((s, op) => s + Number(op.amount || 0), 0);
     const subtitle = [
