@@ -123,8 +123,7 @@ async function loadData() {
 }
 
 async function saveOperation(op) {
-  const payload = { operation: op, ...op };
-  await api('addOperation', payload);
+  await api('addOperation', op);
   state.operations.unshift(normalizeOperation(op));
   renderAll();
 }
