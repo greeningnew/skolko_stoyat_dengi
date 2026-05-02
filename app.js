@@ -267,7 +267,7 @@ function renderChips(containerId, items, active, onClick) {
     <button type="button" class="chip ${name === active ? 'active' : ''}" data-value="${name}">
       <span class="ico">
   ${icon.length > 3
-    ? `<img src="./icons/categories/${icon}.svg" alt="">`
+    ? `<img src="./assets/categories/${icon}.svg" alt="">`
     : icon}
 </span>
 <span>${name}</span>
