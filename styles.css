@@ -64,7 +64,15 @@ h2 { margin: 0; font-size: 21px; line-height: 1.1; letter-spacing: -0.035em; tex
 }
 
 .screen { display: none; }
-.screen.active { display: block; }
+.screen.active {
+  display: block;
+  animation: screenIn .24s ease both;
+}
+
+@keyframes screenIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 .balance-card, .entry-card, .analytics-card {
   background: rgba(255,255,255,0.86);
@@ -401,4 +409,73 @@ h2 { margin: 0; font-size: 21px; line-height: 1.1; letter-spacing: -0.035em; tex
 @media (max-width: 380px) {
   .nav-btn { font-size: 11px; }
   .goal-target-row, .goal-add-form { grid-template-columns: 1fr; }
+}
+
+
+/* v12 tactile UX upgrade */
+.primary-btn,
+.secondary-btn,
+.chip,
+.nav-btn,
+.icon-button,
+.account-pill,
+.filter-select {
+  transition: transform .08s ease, box-shadow .12s ease, background .15s ease, border-color .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.primary-btn:active,
+.secondary-btn:active,
+.chip:active,
+.nav-btn:active,
+.icon-button:active,
+.account-pill:active {
+  transform: scale(0.96);
+}
+
+.chip.active,
+.analytics-toggle button.active,
+.nav-btn.active {
+  box-shadow: 0 6px 18px rgba(59, 91, 255, 0.24);
+}
+
+.entry-card,
+.balance-card,
+.analytics-card,
+.goal-card,
+.history-item,
+.legend-row {
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+
+.balance-card.flash {
+  animation: balanceFlash .34s ease;
+}
+
+@keyframes balanceFlash {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.018); }
+  100% { transform: scale(1); }
+}
+
+.toast.show {
+  opacity: 1;
+  animation: toastPop 2s ease both;
+}
+
+@keyframes toastPop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.92); }
+  8% { opacity: 1; transform: translate(-50%, -50%) scale(1.06); }
+  16% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  86% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(.96); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
