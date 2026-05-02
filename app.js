@@ -265,7 +265,12 @@ function renderChips(containerId, items, active, onClick) {
   const container = $(containerId);
   container.innerHTML = items.map(([name, icon]) => `
     <button type="button" class="chip ${name === active ? 'active' : ''}" data-value="${name}">
-      <span class="ico">${icon}</span><span>${name}</span>
+      <span class="ico">
+  ${icon.length > 3
+    ? `<img src="./icons/categories/${icon}.svg" alt="">`
+    : icon}
+</span>
+<span>${name}</span>
     </button>
   `).join('');
   container.querySelectorAll('.chip').forEach(btn => btn.addEventListener('click', () => onClick(btn.dataset.value)));
