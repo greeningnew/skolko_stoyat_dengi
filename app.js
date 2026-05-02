@@ -353,6 +353,15 @@ function renderDonut(canvasId, legendId, data, total) {
   `).join('');
 }
 
+function animateAnalyticsSwitch() {
+  const card = document.querySelector('.analytics-main-card');
+  if (!card) return;
+  card.classList.remove('analytics-switching');
+  void card.offsetWidth;
+  card.classList.add('analytics-switching');
+  setTimeout(() => card.classList.remove('analytics-switching'), 360);
+}
+
 function renderHistoryFilters() {
   const select = $('historyCategoryFilter');
   if (!select) return;
@@ -485,8 +494,12 @@ function bindEvents() {
   $('prevMonth').addEventListener('click', () => { state.selectedMonth.setMonth(state.selectedMonth.getMonth() - 1); renderAnalytics(); });
   $('nextMonth').addEventListener('click', () => { state.selectedMonth.setMonth(state.selectedMonth.getMonth() + 1); renderAnalytics(); });
   document.querySelectorAll('[data-analytics-type]').forEach(btn => btn.addEventListener('click', () => {
-    state.analyticsType = btn.dataset.analyticsType;
+    const nextType = btn.dataset.analyticsType;
+    if (state.analyticsType === nextType) return;
+    state.analyticsType = nextType;
     renderAnalytics();
+    animateAnalyticsSwitch();
+    haptic(6);
   }));
   if ($('historyAccountFilter')) $('historyAccountFilter').addEventListener('change', e => {
     state.historyAccount = e.target.value;
