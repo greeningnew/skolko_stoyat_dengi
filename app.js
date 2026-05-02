@@ -287,7 +287,13 @@ function setIncomeStep(step) {
   document.querySelectorAll('[data-income-step-dot]').forEach(el => el.classList.toggle('active', Number(el.dataset.incomeStepDot) === state.incomeStep));
 }
 function renderForms() {
-  renderChips('expenseCategories', expenseCategories, state.expense.category, value => { state.expense.category = value; renderForms(); });
+  renderChips('expenseCategories', expenseCategories, state.expense.category, value => {
+  state.expense.category = value;
+
+  document.querySelectorAll('#expenseCategories .chip').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === value);
+  });
+});
   renderChips('expenseAccounts', accounts, state.expense.account, value => { state.expense.account = value; renderForms(); });
   renderChips('incomeCategories', incomeCategories, state.income.category, value => { state.income.category = value; renderForms(); });
   renderChips('incomeAccounts', accounts, state.income.account, value => { state.income.account = value; renderForms(); });
@@ -454,10 +460,18 @@ function renderHistory() {
     const rowsHtml = items.map(op => {
       const icon = [...expenseCategories, ...incomeCategories].find(([name]) => name === op.category)?.[1] || '•';
       const sign = op.type === 'income' ? '+' : '-';
-      return `<div class="history-item">
-        <div class="history-title"><strong>${icon} ${op.category}</strong><span class="history-meta">${op.account}${op.comment ? ' · ' + op.comment : ''}</span></div>
-        <strong class="history-amount ${op.type}">${sign}${formatMoney(op.amount)}</strong>
-      </div>`;
+     return `<div class="history-item">
+  <div class="history-title">
+    <strong>
+      ${icon.length > 3
+        ? `<img class="history-icon" src="./assets/categories/${icon}.svg" alt="">`
+        : icon}
+      ${op.category}
+    </strong>
+    <span class="history-meta">${op.account}${op.comment ? ' · ' + op.comment : ''}</span>
+  </div>
+  <strong class="history-amount ${op.type}">${sign}${formatMoney(op.amount)}</strong>
+</div>`;
     }).join('');
 
     return `<section class="history-day">
