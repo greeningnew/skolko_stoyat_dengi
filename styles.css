@@ -85,20 +85,32 @@ h2 { margin: 0; font-size: 21px; line-height: 1.1; letter-spacing: -0.035em; tex
 .balance-topline { display: flex; justify-content: space-between; gap: 12px; align-items: center; color: var(--muted); font-size: 14px; text-transform: lowercase; }
 .balance-card > strong { display: block; font-size: 48px; letter-spacing: -0.06em; line-height: 1; margin: 10px 0 18px; }
 .account-inline {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  display: flex;
+  gap: 6px;
+  overflow-x: hidden;
+  padding-bottom: 2px;
 }
-.account-inline::-webkit-scrollbar { display: none; }
+.account-inline::-webkit-scrollbar {
+  display: none;
+}
 .account-pill {
-  justify-content: space-between;
-  padding: 8px 10px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--card-soft);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 8px;
+  color: var(--muted);
+  font-size: 11.5px;
 }
-  background: var(--card-soft); border: 1px solid var(--line); border-radius: 999px;
-  padding: 8px 10px 8px 12px; color: var(--muted); font-size: 13px;
+.account-pill strong {
+  color: var(--text);
+  font-size: 12.5px;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
 }
-.account-pill strong { color: var(--text); font-size: 14px; letter-spacing: -0.02em; white-space: nowrap; }
-
 .entry-card { padding: 20px; }
 .entry-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .steps { display: flex; align-items: center; gap: 6px; color: var(--muted); }
