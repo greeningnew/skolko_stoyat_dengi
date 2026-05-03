@@ -261,19 +261,36 @@ function renderAccounts() {
   `).join('');
 }
 
+function isSvgIcon(icon) {
+  return typeof icon === 'string' && /^[a-z0-9-]+$/i.test(icon);
+}
+
+function iconMarkup(icon, className = '') {
+  if (!isSvgIcon(icon)) return escapeHtml(icon || '•');
+  const cls = className ? ` class="${className}"` : '';
+  return `<img${cls} src="./assets/categories/${icon}.svg" alt="" loading="eager" decoding="async">`;
+}
+
+function updateActiveChip(containerId, value) {
+  document.querySelectorAll(`#${containerId} .chip`).forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === value);
+  });
+}
+
 function renderChips(containerId, items, active, onClick) {
   const container = $(containerId);
+  if (!container) return;
+
   container.innerHTML = items.map(([name, icon]) => `
-    <button type="button" class="chip ${name === active ? 'active' : ''}" data-value="${name}">
-      <span class="ico">
-  ${icon.length > 3
-    ? `<img src="./assets/categories/${icon}.svg" alt="">`
-    : icon}
-</span>
-<span>${name}</span>
+    <button type="button" class="chip ${name === active ? 'active' : ''}" data-value="${escapeHtml(name)}">
+      <span class="ico">${iconMarkup(icon)}</span>
+      <span>${escapeHtml(name)}</span>
     </button>
   `).join('');
-  container.querySelectorAll('.chip').forEach(btn => btn.addEventListener('click', () => onClick(btn.dataset.value)));
+
+  container.querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', () => onClick(btn.dataset.value));
+  });
 }
 
 function setExpenseStep(step) {
@@ -288,15 +305,24 @@ function setIncomeStep(step) {
 }
 function renderForms() {
   renderChips('expenseCategories', expenseCategories, state.expense.category, value => {
-  state.expense.category = value;
-
-  document.querySelectorAll('#expenseCategories .chip').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.value === value);
+    state.expense.category = value;
+    updateActiveChip('expenseCategories', value);
   });
-});
-  renderChips('expenseAccounts', accounts, state.expense.account, value => { state.expense.account = value; renderForms(); });
-  renderChips('incomeCategories', incomeCategories, state.income.category, value => { state.income.category = value; renderForms(); });
-  renderChips('incomeAccounts', accounts, state.income.account, value => { state.income.account = value; renderForms(); });
+
+  renderChips('expenseAccounts', accounts, state.expense.account, value => {
+    state.expense.account = value;
+    updateActiveChip('expenseAccounts', value);
+  });
+
+  renderChips('incomeCategories', incomeCategories, state.income.category, value => {
+    state.income.category = value;
+    updateActiveChip('incomeCategories', value);
+  });
+
+  renderChips('incomeAccounts', accounts, state.income.account, value => {
+    state.income.account = value;
+    updateActiveChip('incomeAccounts', value);
+  });
 }
 
 function monthOps(offset = 0) {
@@ -460,18 +486,15 @@ function renderHistory() {
     const rowsHtml = items.map(op => {
       const icon = [...expenseCategories, ...incomeCategories].find(([name]) => name === op.category)?.[1] || '•';
       const sign = op.type === 'income' ? '+' : '-';
-     return `<div class="history-item">
-  <div class="history-title">
-    <strong>
-      ${icon.length > 3
-        ? `<img class="history-icon" src="./assets/categories/${icon}.svg" alt="">`
-        : icon}
-      ${op.category}
-    </strong>
-    <span class="history-meta">${op.account}${op.comment ? ' · ' + op.comment : ''}</span>
-  </div>
-  <strong class="history-amount ${op.type}">${sign}${formatMoney(op.amount)}</strong>
-</div>`;
+      const meta = [op.account, op.comment].filter(Boolean).join(' · ');
+
+      return `<div class="history-item">
+        <div class="history-title">
+          <strong>${iconMarkup(icon, 'history-icon')} ${escapeHtml(op.category)}</strong>
+          <span class="history-meta">${escapeHtml(meta)}</span>
+        </div>
+        <strong class="history-amount ${op.type}">${sign}${formatMoney(op.amount)}</strong>
+      </div>`;
     }).join('');
 
     return `<section class="history-day">
