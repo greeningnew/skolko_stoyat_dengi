@@ -84,10 +84,16 @@ h2 { margin: 0; font-size: 21px; line-height: 1.1; letter-spacing: -0.035em; tex
 .balance-card { padding: 22px; margin-bottom: 14px; }
 .balance-topline { display: flex; justify-content: space-between; gap: 12px; align-items: center; color: var(--muted); font-size: 14px; text-transform: lowercase; }
 .balance-card > strong { display: block; font-size: 48px; letter-spacing: -0.06em; line-height: 1; margin: 10px 0 18px; }
-.account-inline { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.account-inline {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
 .account-inline::-webkit-scrollbar { display: none; }
 .account-pill {
-  flex: 0 0 auto; display: inline-flex; align-items: center; gap: 8px;
+  justify-content: space-between;
+  padding: 8px 10px;
+}
   background: var(--card-soft); border: 1px solid var(--line); border-radius: 999px;
   padding: 8px 10px 8px 12px; color: var(--muted); font-size: 13px;
 }
