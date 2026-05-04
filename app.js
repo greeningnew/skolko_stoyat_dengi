@@ -4,6 +4,7 @@ const API_TOKEN = '673-ov1P8j9pRWAKzEEEEdyEC5MunZSr';
 const state = {
   operations: [],
   goals: [],
+  customCategories: { expense: [], income: [] },
   selectedMonth: new Date(),
   expenseStep: 1,
   incomeStep: 1,
@@ -14,17 +15,69 @@ const state = {
   income: { type: 'income', amount: '', category: 'зп nonteam', account: 'карта', date: '', comment: '' },
 };
 
-const expenseCategories = [
+const baseExpenseCategories = [
   ['продукты', 'food'], ['транспорт', 'transport'], ['еда вне дома', 'restaurant'], ['курение', 'smoking'], ['здоровье', 'health'],
   ['спорт', 'sport'], ['одежда', 'clothes'], ['подписки', 'subscriptions'], ['развлечения', 'entertainment'],
-  ['дом', '🏠'], ['кредиты', 'credit'], ['бизнес', 'business'], ['долг', 'debt'], ['другое', 'other'],
+  ['дом', '🏠'], ['аренда квартиры', '🏠'], ['оплаты за сдачу жилья', '🏠'],
+  ['кредиты', 'credit'], ['бизнес', 'business'], ['долг', 'debt'], ['другое', 'other'],
 ];
-const incomeCategories = [
-  ['зп nonteam', '💼'], ['фриланс', '⚡'], ['подарки', '🎁'], ['прочее', '•••'],
+const baseIncomeCategories = [
+  ['зп nonteam', '💼'], ['фриланс', '⚡'], ['сдача жилья', '🏠'], ['подарки', '🎁'], ['прочее', '•••'],
 ];
 const accounts = [['карта', '💳'], ['наличка', '💵'], ['крипта', '🟡₿'], ['другое', '•••']];
 const colors = ['#3B5BFF', '#22C7A9', '#F59E0B', '#EF476F', '#8B5CF6', '#14B8A6', '#94A3B8', '#60A5FA', '#111827', '#6C8CFF'];
 const monthNames = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
+const categoryIconOptions = [
+  ['other', 'другое'],
+  ['home', 'дом'],
+  ['business', 'бизнес'],
+  ['food', 'продукты'],
+  ['restaurant', 'еда'],
+  ['transport', 'транспорт'],
+  ['health', 'здоровье'],
+  ['sport', 'спорт'],
+  ['clothes', 'одежда'],
+  ['subscriptions', 'подписки'],
+  ['entertainment', 'развлечения'],
+  ['credit', 'кредиты'],
+  ['debt', 'долг'],
+  ['smoking', 'курение'],
+];
+
+
+function normalizeCategory(raw, fallbackType = 'expense') {
+  if (Array.isArray(raw)) {
+    return { type: fallbackType, name: String(raw[0] || '').trim(), icon: raw[1] || 'other' };
+  }
+  return {
+    type: raw.type === 'income' ? 'income' : 'expense',
+    name: String(raw.name || '').trim().toLowerCase(),
+    icon: raw.icon || 'other',
+    createdAt: raw.createdAt || new Date().toISOString(),
+  };
+}
+
+function uniqueCategories(categories) {
+  const map = new Map();
+  categories.map(item => normalizeCategory(item)).filter(item => item.name).forEach(item => {
+    map.set(item.name, item);
+  });
+  return [...map.values()];
+}
+
+function categoryItems(type) {
+  const base = type === 'income' ? baseIncomeCategories : baseExpenseCategories;
+  const custom = state.customCategories[type] || [];
+  const merged = uniqueCategories([
+    ...base.map(([name, icon]) => ({ type, name, icon })),
+    ...custom.map(item => ({ ...item, type })),
+  ]);
+  return merged.map(item => [item.name, item.icon || 'other']);
+}
+
+function allCategoryItems() {
+  return [...categoryItems('expense'), ...categoryItems('income')];
+}
 
 const $ = (id) => document.getElementById(id);
 
@@ -159,6 +212,9 @@ async function loadData() {
     const rows = data.operations || data.rows || data.data || [];
     state.operations = rows.map(normalizeOperation);
     state.goals = (data.goals || []).map(normalizeGoal);
+    const categories = data.categories || data.customCategories || [];
+    state.customCategories.expense = uniqueCategories(categories.filter(item => normalizeCategory(item, 'expense').type === 'expense'));
+    state.customCategories.income = uniqueCategories(categories.filter(item => normalizeCategory(item, 'income').type === 'income'));
     $('status').textContent = 'синхронизировано';
   } catch (err) {
     $('status').textContent = `ошибка: ${err.message}`;
@@ -179,6 +235,33 @@ async function saveGoal(goal) {
   await api('addGoal', normalized);
   state.goals.unshift(normalized);
   renderAll();
+}
+
+
+async function saveCategory(type, name, icon = 'other') {
+  const normalized = normalizeCategory({
+    type,
+    name,
+    icon,
+    createdAt: new Date().toISOString(),
+  }, type);
+  if (!normalized.name) return;
+
+  const exists = categoryItems(type).some(([categoryName]) => categoryName === normalized.name);
+  if (exists) {
+    showToast('такая категория уже есть');
+    return;
+  }
+
+  await api('addCategory', normalized);
+  state.customCategories[type].push(normalized);
+
+  if (type === 'expense') state.expense.category = normalized.name;
+  if (type === 'income') state.income.category = normalized.name;
+
+  renderForms();
+  showToast('категория добавлена');
+  haptic(10);
 }
 
 async function addGoalProgress(id, amount) {
@@ -231,6 +314,11 @@ function haptic(ms = 10) {
   if (navigator.vibrate) navigator.vibrate(ms);
 }
 
+function accountShortName(name) {
+  const labels = { карта: 'карта', наличка: 'нал.', крипта: 'крипта', другое: 'другое' };
+  return labels[name] || name;
+}
+
 function renderAccounts() {
   const balance = { карта: 0, наличка: 0, крипта: 0, другое: 0 };
   state.operations.forEach(op => {
@@ -257,41 +345,107 @@ function renderAccounts() {
   }
   if ($('todaySpent')) $('todaySpent').textContent = formatMoney(todaySpent);
   $('accountInline').innerHTML = ['карта', 'наличка', 'крипта'].map(name => `
-    <div class="account-pill"><span>${name}</span><strong>${formatMoney(balance[name] || 0)}</strong></div>
+    <div class="account-pill"><span>${accountShortName(name)}</span><strong>${formatMoney(balance[name] || 0)}</strong></div>
   `).join('');
-}
-
-function isSvgIcon(icon) {
-  return typeof icon === 'string' && /^[a-z0-9-]+$/i.test(icon);
 }
 
 function iconMarkup(icon, className = '') {
-  if (!isSvgIcon(icon)) return escapeHtml(icon || '•');
-  const cls = className ? ` class="${className}"` : '';
-  return `<img${cls} src="./assets/categories/${icon}.svg" alt="" loading="eager" decoding="async">`;
+  if (!icon) return '•';
+  const safeIcon = String(icon);
+  if (safeIcon.length > 3) {
+    return `<img class="${className}" src="./assets/categories/${safeIcon}.svg" alt="">`;
+  }
+  return safeIcon;
 }
 
-function updateActiveChip(containerId, value) {
-  document.querySelectorAll(`#${containerId} .chip`).forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.value === value);
-  });
-}
 
-function renderChips(containerId, items, active, onClick) {
+function renderChips(containerId, items, active, onClick, options = {}) {
   const container = $(containerId);
-  if (!container) return;
+  const addButton = options.onAdd
+    ? `<button type="button" class="chip add-category-chip" data-add-category="${options.type}">
+        <span class="ico">+</span><span>добавить новую</span>
+      </button>`
+    : '';
 
   container.innerHTML = items.map(([name, icon]) => `
-    <button type="button" class="chip ${name === active ? 'active' : ''}" data-value="${escapeHtml(name)}">
+    <button type="button" class="chip ${name === active ? 'active' : ''}" data-value="${name}">
       <span class="ico">${iconMarkup(icon)}</span>
-      <span>${escapeHtml(name)}</span>
+      <span>${name}</span>
     </button>
-  `).join('');
+  `).join('') + addButton;
 
-  container.querySelectorAll('.chip').forEach(btn => {
-    btn.addEventListener('click', () => onClick(btn.dataset.value));
+  container.querySelectorAll('.chip[data-value]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      haptic(6);
+      onClick(btn.dataset.value);
+    });
+  });
+
+  const addCategoryButton = container.querySelector('[data-add-category]');
+  if (addCategoryButton) {
+    addCategoryButton.addEventListener('click', () => {
+      haptic(6);
+      openCategoryForm(containerId, options.type);
+    });
+  }
+}
+
+function openCategoryForm(containerId, type) {
+  const container = $(containerId);
+  const oldForm = container.querySelector('.category-add-form');
+  if (oldForm) oldForm.remove();
+
+  const form = document.createElement('form');
+  form.className = 'category-add-form';
+  form.innerHTML = `
+    <input class="category-add-input" type="text" autocomplete="off" placeholder="название категории" />
+    <div class="category-icon-picker" aria-label="Выбор иконки">
+      ${categoryIconOptions.map(([icon, label], index) => `
+        <button class="category-icon-option ${index === 0 ? 'active' : ''}" type="button" data-icon="${icon}" aria-label="${label}">
+          ${iconMarkup(icon, 'category-icon-preview')}
+        </button>
+      `).join('')}
+    </div>
+    <div class="category-add-actions">
+      <button class="category-add-cancel" type="button">отмена</button>
+      <button class="category-add-save" type="submit">сохранить</button>
+    </div>
+  `;
+
+  container.appendChild(form);
+
+  const input = form.querySelector('.category-add-input');
+  const saveButton = form.querySelector('.category-add-save');
+  const cancelButton = form.querySelector('.category-add-cancel');
+  let selectedIcon = 'other';
+
+  input.focus();
+
+  form.querySelectorAll('.category-icon-option').forEach(button => {
+    button.addEventListener('click', () => {
+      selectedIcon = button.dataset.icon || 'other';
+      form.querySelectorAll('.category-icon-option').forEach(item => item.classList.toggle('active', item === button));
+      haptic(6);
+    });
+  });
+
+  cancelButton.addEventListener('click', () => form.remove());
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const name = input.value.trim().toLowerCase();
+    if (!name || saveButton.disabled) return;
+
+    setButtonLoading(saveButton, true, 'сохраняю');
+    try {
+      await saveCategory(type, name, selectedIcon);
+    } catch (err) {
+      showToast(`ошибка: ${err.message}`);
+      setButtonLoading(saveButton, false);
+    }
   });
 }
+
 
 function setExpenseStep(step) {
   state.expenseStep = Math.max(1, Math.min(3, step));
@@ -303,25 +457,28 @@ function setIncomeStep(step) {
   document.querySelectorAll('.income-flow-step').forEach(el => el.classList.toggle('active', Number(el.dataset.incomeStep) === state.incomeStep));
   document.querySelectorAll('[data-income-step-dot]').forEach(el => el.classList.toggle('active', Number(el.dataset.incomeStepDot) === state.incomeStep));
 }
-function renderForms() {
-  renderChips('expenseCategories', expenseCategories, state.expense.category, value => {
-    state.expense.category = value;
-    updateActiveChip('expenseCategories', value);
+function setActiveChip(containerId, value) {
+  document.querySelectorAll(`#${containerId} .chip`).forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === value);
   });
+}
 
+function renderForms() {
+  renderChips('expenseCategories', categoryItems('expense'), state.expense.category, value => {
+    state.expense.category = value;
+    setActiveChip('expenseCategories', value);
+  }, { type: 'expense', onAdd: true });
   renderChips('expenseAccounts', accounts, state.expense.account, value => {
     state.expense.account = value;
-    updateActiveChip('expenseAccounts', value);
+    setActiveChip('expenseAccounts', value);
   });
-
-  renderChips('incomeCategories', incomeCategories, state.income.category, value => {
+  renderChips('incomeCategories', categoryItems('income'), state.income.category, value => {
     state.income.category = value;
-    updateActiveChip('incomeCategories', value);
-  });
-
+    setActiveChip('incomeCategories', value);
+  }, { type: 'income', onAdd: true });
   renderChips('incomeAccounts', accounts, state.income.account, value => {
     state.income.account = value;
-    updateActiveChip('incomeAccounts', value);
+    setActiveChip('incomeAccounts', value);
   });
 }
 
@@ -447,9 +604,19 @@ function renderGoals() {
       const input = form.querySelector('.goal-add-input');
       const amount = parseAmount(input.value);
       if (!amount) return;
-      await addGoalProgress(form.dataset.goalId, amount);
-      showToast('добавлено в цель');
-      haptic(10);
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (submitBtn?.disabled) return;
+      setButtonLoading(submitBtn, true, 'добавляю');
+      haptic(12);
+      try {
+        await addGoalProgress(form.dataset.goalId, amount);
+        showToast('добавлено в цель');
+        haptic(18);
+      } catch (err) {
+        showToast(`ошибка: ${err.message}`);
+      } finally {
+        setButtonLoading(submitBtn, false);
+      }
     });
   });
 }
@@ -484,15 +651,10 @@ function renderHistory() {
     ].filter(Boolean).join(' · ');
 
     const rowsHtml = items.map(op => {
-      const icon = [...expenseCategories, ...incomeCategories].find(([name]) => name === op.category)?.[1] || '•';
+      const icon = allCategoryItems().find(([name]) => name === op.category)?.[1] || '•';
       const sign = op.type === 'income' ? '+' : '-';
-      const meta = [op.account, op.comment].filter(Boolean).join(' · ');
-
       return `<div class="history-item">
-        <div class="history-title">
-          <strong>${iconMarkup(icon, 'history-icon')} ${escapeHtml(op.category)}</strong>
-          <span class="history-meta">${escapeHtml(meta)}</span>
-        </div>
+        <div class="history-title"><strong>${icon} ${op.category}</strong><span class="history-meta">${op.account}${op.comment ? ' · ' + op.comment : ''}</span></div>
         <strong class="history-amount ${op.type}">${sign}${formatMoney(op.amount)}</strong>
       </div>`;
     }).join('');
@@ -516,23 +678,42 @@ function showToast(message) {
   showToast.timer = setTimeout(() => toast.classList.remove('show'), 2000);
 }
 
+
+function setButtonLoading(button, isLoading, loadingText = 'сохраняю') {
+  if (!button) return;
+  if (isLoading) {
+    button.dataset.originalText = button.textContent;
+    button.textContent = loadingText;
+    button.disabled = true;
+    button.classList.add('is-loading');
+  } else {
+    button.textContent = button.dataset.originalText || button.textContent;
+    button.disabled = false;
+    button.classList.remove('is-loading');
+    delete button.dataset.originalText;
+  }
+}
+
 function bindEvents() {
   $('syncButton').addEventListener('click', loadData);
   document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => {
+    haptic(6);
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b === btn));
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     $(`screen-${btn.dataset.screen}`).classList.add('active');
   }));
   document.querySelectorAll('[data-next="expense"]').forEach(btn => btn.addEventListener('click', () => {
     if (state.expenseStep === 1 && !parseAmount($('expenseAmount').value)) return;
+    haptic(6);
     setExpenseStep(state.expenseStep + 1);
   }));
-  document.querySelectorAll('[data-back="expense"]').forEach(btn => btn.addEventListener('click', () => setExpenseStep(state.expenseStep - 1)));
+  document.querySelectorAll('[data-back="expense"]').forEach(btn => btn.addEventListener('click', () => { haptic(4); setExpenseStep(state.expenseStep - 1); }));
   document.querySelectorAll('[data-next="income"]').forEach(btn => btn.addEventListener('click', () => {
     if (state.incomeStep === 1 && !parseAmount($('incomeAmount').value)) return;
+    haptic(6);
     setIncomeStep(state.incomeStep + 1);
   }));
-  document.querySelectorAll('[data-back="income"]').forEach(btn => btn.addEventListener('click', () => setIncomeStep(state.incomeStep - 1)));
+  document.querySelectorAll('[data-back="income"]').forEach(btn => btn.addEventListener('click', () => { haptic(4); setIncomeStep(state.incomeStep - 1); }));
   $('prevMonth').addEventListener('click', () => { state.selectedMonth.setMonth(state.selectedMonth.getMonth() - 1); renderAnalytics(); });
   $('nextMonth').addEventListener('click', () => { state.selectedMonth.setMonth(state.selectedMonth.getMonth() + 1); renderAnalytics(); });
   document.querySelectorAll('[data-analytics-type]').forEach(btn => btn.addEventListener('click', () => {
@@ -554,33 +735,69 @@ function bindEvents() {
 
   $('expenseForm').addEventListener('submit', async e => {
     e.preventDefault();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
     const op = { type: 'expense', amount: parseAmount($('expenseAmount').value), category: state.expense.category, account: state.expense.account, date: $('expenseDate').value || todayISO(), comment: $('expenseComment').value.trim(), createdAt: new Date().toISOString() };
-    if (!op.amount) return;
-    await saveOperation(op);
-    showToast('трата добавлена');
-    haptic(10);
-    $('expenseAmount').value = ''; $('expenseComment').value = ''; $('expenseDate').value = todayISO(); setExpenseStep(1);
+    if (!op.amount || submitBtn?.disabled) return;
+
+    setButtonLoading(submitBtn, true, 'сохраняю');
+    haptic(12);
+    try {
+      await saveOperation(op);
+      showToast('трата добавлена');
+      haptic(18);
+      $('expenseAmount').value = '';
+      $('expenseComment').value = '';
+      $('expenseDate').value = todayISO();
+      setExpenseStep(1);
+    } catch (err) {
+      showToast(`ошибка: ${err.message}`);
+    } finally {
+      setButtonLoading(submitBtn, false);
+    }
   });
   $('incomeForm').addEventListener('submit', async e => {
     e.preventDefault();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
     const op = { type: 'income', amount: parseAmount($('incomeAmount').value), category: state.income.category, account: state.income.account, date: $('incomeDate').value || todayISO(), comment: $('incomeComment').value.trim(), createdAt: new Date().toISOString() };
-    if (!op.amount) return;
-    await saveOperation(op);
-    showToast('доход добавлен');
-    haptic(10);
-    $('incomeAmount').value = ''; $('incomeComment').value = ''; $('incomeDate').value = todayISO(); setIncomeStep(1);
+    if (!op.amount || submitBtn?.disabled) return;
+
+    setButtonLoading(submitBtn, true, 'сохраняю');
+    haptic(12);
+    try {
+      await saveOperation(op);
+      showToast('доход добавлен');
+      haptic(18);
+      $('incomeAmount').value = '';
+      $('incomeComment').value = '';
+      $('incomeDate').value = todayISO();
+      setIncomeStep(1);
+    } catch (err) {
+      showToast(`ошибка: ${err.message}`);
+    } finally {
+      setButtonLoading(submitBtn, false);
+    }
   });
 
   if ($('goalForm')) $('goalForm').addEventListener('submit', async e => {
     e.preventDefault();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
     const name = $('goalName').value.trim();
     const target = parseAmount($('goalTarget').value);
-    if (!name || !target) return;
-    await saveGoal({ name, target, current: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
-    showToast('цель создана');
-    haptic(10);
-    $('goalName').value = '';
-    $('goalTarget').value = '';
+    if (!name || !target || submitBtn?.disabled) return;
+
+    setButtonLoading(submitBtn, true, 'создаю');
+    haptic(12);
+    try {
+      await saveGoal({ name, target, current: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+      showToast('цель создана');
+      haptic(18);
+      $('goalName').value = '';
+      $('goalTarget').value = '';
+    } catch (err) {
+      showToast(`ошибка: ${err.message}`);
+    } finally {
+      setButtonLoading(submitBtn, false);
+    }
   });
 }
 
