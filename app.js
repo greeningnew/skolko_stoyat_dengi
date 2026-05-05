@@ -65,6 +65,22 @@ function uniqueCategories(categories) {
   return [...map.values()];
 }
 
+
+function categoriesToArray(source) {
+  if (Array.isArray(source)) return source;
+  if (!source || typeof source !== 'object') return [];
+
+  const expense = Array.isArray(source.expense)
+    ? source.expense.map(item => ({ ...normalizeCategory(item, 'expense'), type: 'expense' }))
+    : [];
+
+  const income = Array.isArray(source.income)
+    ? source.income.map(item => ({ ...normalizeCategory(item, 'income'), type: 'income' }))
+    : [];
+
+  return [...expense, ...income];
+}
+
 function categoryItems(type) {
   const base = type === 'income' ? baseIncomeCategories : baseExpenseCategories;
   const custom = state.customCategories[type] || [];
@@ -212,9 +228,13 @@ async function loadData() {
     const rows = data.operations || data.rows || data.data || [];
     state.operations = rows.map(normalizeOperation);
     state.goals = (data.goals || []).map(normalizeGoal);
-    const categories = data.categories || data.customCategories || [];
-    state.customCategories.expense = uniqueCategories(categories.filter(item => normalizeCategory(item, 'expense').type === 'expense'));
-    state.customCategories.income = uniqueCategories(categories.filter(item => normalizeCategory(item, 'income').type === 'income'));
+    const categories = categoriesToArray(data.categories || data.customCategories || []);
+    state.customCategories.expense = uniqueCategories(
+      categories.filter(item => normalizeCategory(item, 'expense').type === 'expense')
+    );
+    state.customCategories.income = uniqueCategories(
+      categories.filter(item => normalizeCategory(item, 'income').type === 'income')
+    );
     $('status').textContent = 'синхронизировано';
   } catch (err) {
     $('status').textContent = `ошибка: ${err.message}`;
