@@ -5,6 +5,7 @@ const state = {
   operations: [],
   goals: [],
   customCategories: { expense: [], income: [] },
+  categoryModalType: null,
   selectedMonth: new Date(),
   expenseStep: 1,
   incomeStep: 1,
@@ -382,7 +383,7 @@ function iconMarkup(icon, className = '') {
 function renderChips(containerId, items, active, onClick, options = {}) {
   const container = $(containerId);
   const addButton = options.onAdd
-    ? `<button type="button" class="chip add-category-chip" data-add-category="${options.type}">
+    ? `<button type="button" class="chip add-category-chip ${state.categoryModalType === options.type ? 'active' : ''}" data-add-category="${options.type}">
         <span class="ico">+</span><span>добавить новую</span>
       </button>`
     : '';
@@ -405,41 +406,68 @@ function renderChips(containerId, items, active, onClick, options = {}) {
   if (addCategoryButton) {
     addCategoryButton.addEventListener('click', () => {
       haptic(6);
-      openCategoryForm(containerId, options.type);
+      const type = options.type;
+      if (state.categoryModalType === type) {
+        closeCategoryModal();
+        return;
+      }
+      openCategoryModal(type);
     });
   }
 }
 
-function openCategoryForm(containerId, type) {
-  const container = $(containerId);
-  const oldForm = container.querySelector('.category-add-form');
-  if (oldForm) oldForm.remove();
+function closeCategoryModal() {
+  const existing = document.querySelector('.category-modal-backdrop');
+  if (existing) existing.remove();
+  state.categoryModalType = null;
+  document.querySelectorAll('.add-category-chip').forEach(btn => btn.classList.remove('active'));
+}
 
-  const form = document.createElement('form');
-  form.className = 'category-add-form';
-  form.innerHTML = `
-    <input class="category-add-input" type="text" autocomplete="off" placeholder="название категории" />
-    <div class="category-icon-picker" aria-label="Выбор иконки">
-      ${categoryIconOptions.map(([icon, label], index) => `
-        <button class="category-icon-option ${index === 0 ? 'active' : ''}" type="button" data-icon="${icon}" aria-label="${label}">
-          ${iconMarkup(icon, 'category-icon-preview')}
-        </button>
-      `).join('')}
-    </div>
-    <div class="category-add-actions">
-      <button class="category-add-cancel" type="button">отмена</button>
-      <button class="category-add-save" type="submit">сохранить</button>
-    </div>
+function openCategoryModal(type) {
+  closeCategoryModal();
+  state.categoryModalType = type;
+  document.querySelectorAll(`[data-add-category="${type}"]`).forEach(btn => btn.classList.add('active'));
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'category-modal-backdrop';
+  backdrop.innerHTML = `
+    <form class="category-add-form category-add-modal" role="dialog" aria-modal="true">
+      <div class="category-modal-head">
+        <strong>новая категория</strong>
+        <button class="category-modal-close" type="button" aria-label="Закрыть">×</button>
+      </div>
+      <input class="category-add-input" type="text" autocomplete="off" placeholder="название категории" />
+      <div class="category-icon-picker" aria-label="Выбор иконки">
+        ${categoryIconOptions.map(([icon, label], index) => `
+          <button class="category-icon-option ${index === 0 ? 'active' : ''}" type="button" data-icon="${icon}" aria-label="${label}">
+            ${iconMarkup(icon, 'category-icon-preview')}
+          </button>
+        `).join('')}
+      </div>
+      <div class="category-add-actions">
+        <button class="category-add-cancel" type="button">отмена</button>
+        <button class="category-add-save" type="submit">сохранить</button>
+      </div>
+    </form>
   `;
 
-  container.appendChild(form);
+  document.body.appendChild(backdrop);
 
-  const input = form.querySelector('.category-add-input');
-  const saveButton = form.querySelector('.category-add-save');
-  const cancelButton = form.querySelector('.category-add-cancel');
+  const form = backdrop.querySelector('.category-add-form');
+  const input = backdrop.querySelector('.category-add-input');
+  const saveButton = backdrop.querySelector('.category-add-save');
+  const cancelButton = backdrop.querySelector('.category-add-cancel');
+  const closeButton = backdrop.querySelector('.category-modal-close');
   let selectedIcon = 'other';
 
-  input.focus();
+  setTimeout(() => input.focus(), 60);
+
+  backdrop.addEventListener('click', e => {
+    if (e.target === backdrop) closeCategoryModal();
+  });
+
+  closeButton.addEventListener('click', closeCategoryModal);
+  cancelButton.addEventListener('click', closeCategoryModal);
 
   form.querySelectorAll('.category-icon-option').forEach(button => {
     button.addEventListener('click', () => {
@@ -449,8 +477,6 @@ function openCategoryForm(containerId, type) {
     });
   });
 
-  cancelButton.addEventListener('click', () => form.remove());
-
   form.addEventListener('submit', async e => {
     e.preventDefault();
     const name = input.value.trim().toLowerCase();
@@ -459,6 +485,7 @@ function openCategoryForm(containerId, type) {
     setButtonLoading(saveButton, true, 'сохраняю');
     try {
       await saveCategory(type, name, selectedIcon);
+      closeCategoryModal();
     } catch (err) {
       showToast(`ошибка: ${err.message}`);
       setButtonLoading(saveButton, false);
