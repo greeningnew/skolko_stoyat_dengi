@@ -6,6 +6,7 @@ const state = {
   goals: [],
   customCategories: { expense: [], income: [] },
   categoryModalType: null,
+  goalActionMenuId: null,
   selectedMonth: new Date(),
   expenseStep: 1,
   incomeStep: 1,
@@ -143,6 +144,28 @@ function dateKey(op) {
 function operationDate(op) {
   return parseDateSafe(op.date) || parseDateSafe(op.createdAt) || parseDateSafe(op.timestamp) || new Date(0);
 }
+
+function operationCreatedTime(op) {
+  const values = [op.createdAt, op.timestamp];
+
+  for (const value of values) {
+    if (!value) continue;
+    if (value instanceof Date && !Number.isNaN(value.getTime())) return value.getTime();
+
+    const parsed = new Date(String(value));
+    if (!Number.isNaN(parsed.getTime())) return parsed.getTime();
+  }
+
+  return operationDate(op).getTime();
+}
+
+function compareOperationsNewestFirst(a, b) {
+  const dateDiff = operationDate(b).getTime() - operationDate(a).getTime();
+  if (dateDiff !== 0) return dateDiff;
+
+  return operationCreatedTime(b) - operationCreatedTime(a);
+}
+
 function isSameMonth(date, base) {
   if (!date || Number.isNaN(date.getTime())) return false;
   return date.getFullYear() === base.getFullYear() && date.getMonth() === base.getMonth();
@@ -294,6 +317,24 @@ async function addGoalProgress(id, amount) {
     goal.current = Math.max(0, Number(goal.current || 0) + value);
     goal.updatedAt = new Date().toISOString();
   }
+  renderAll();
+}
+
+async function updateGoal(id, updates) {
+  const goal = state.goals.find(item => String(item.id) === String(id));
+  if (!goal) throw new Error('goal_not_found');
+
+  const nextGoal = normalizeGoal({ ...goal, ...updates, id, updatedAt: new Date().toISOString() });
+  await api('updateGoal', nextGoal);
+
+  Object.assign(goal, nextGoal);
+  renderAll();
+}
+
+async function deleteGoal(id) {
+  if (!id) return;
+  await api('deleteGoal', { id });
+  state.goals = state.goals.filter(item => String(item.id) !== String(id));
   renderAll();
 }
 
@@ -620,7 +661,7 @@ function renderGoals() {
 
   const goals = [...state.goals].sort((a, b) => Number(b.current || 0) / Math.max(Number(b.target || 0), 1) - Number(a.current || 0) / Math.max(Number(a.target || 0), 1));
   if (!goals.length) {
-    list.innerHTML = '<div class="empty-state">целей пока нет</div>';
+    list.innerHTML = '<div class="empty-state goals-empty-state">целей пока нет</div>';
     return;
   }
 
@@ -629,13 +670,23 @@ function renderGoals() {
     const current = Math.max(Number(goal.current || 0), 0);
     const percent = target ? Math.min(100, Math.round(current / target * 100)) : 0;
     const safeId = escapeHtml(goal.id);
+    const menuOpened = state.goalActionMenuId === String(goal.id);
+
     return `<article class="goal-card" data-goal-id="${safeId}">
       <div class="goal-card-top">
         <div>
           <strong>${escapeHtml(goal.name)}</strong>
           <span>${formatMoney(current)} / ${formatMoney(target)}</span>
         </div>
-        <b>${percent}%</b>
+        <div class="goal-card-actions">
+          <b>${percent}%</b>
+          <button class="goal-menu-btn" type="button" data-goal-menu="${safeId}" aria-label="Действия с целью">•••</button>
+          <div class="goal-menu ${menuOpened ? 'open' : ''}" data-goal-menu-panel="${safeId}">
+            <button type="button" data-goal-action="edit" data-goal-id="${safeId}">редактировать</button>
+            <button type="button" data-goal-action="amount" data-goal-id="${safeId}">изменить сумму</button>
+            <button type="button" class="danger" data-goal-action="delete" data-goal-id="${safeId}">удалить</button>
+          </div>
+        </div>
       </div>
       <div class="goal-progress" aria-label="Прогресс цели"><i style="width:${percent}%"></i></div>
       <form class="goal-add-form" data-goal-id="${safeId}">
@@ -644,6 +695,32 @@ function renderGoals() {
       </form>
     </article>`;
   }).join('');
+
+  list.querySelectorAll('.goal-menu-btn').forEach(button => {
+    button.addEventListener('click', e => {
+      e.stopPropagation();
+      const id = String(button.dataset.goalMenu || '');
+      state.goalActionMenuId = state.goalActionMenuId === id ? null : id;
+      renderGoals();
+      haptic(6);
+    });
+  });
+
+  list.querySelectorAll('[data-goal-action]').forEach(button => {
+    button.addEventListener('click', e => {
+      e.stopPropagation();
+      const id = button.dataset.goalId;
+      const action = button.dataset.goalAction;
+      const goal = state.goals.find(item => String(item.id) === String(id));
+      state.goalActionMenuId = null;
+      renderGoals();
+      if (!goal) return;
+
+      if (action === 'edit') openGoalEditModal(goal, 'edit');
+      if (action === 'amount') openGoalEditModal(goal, 'amount');
+      if (action === 'delete') openGoalDeleteModal(goal);
+    });
+  });
 
   list.querySelectorAll('.goal-add-form').forEach(form => {
     form.addEventListener('submit', async e => {
@@ -668,6 +745,125 @@ function renderGoals() {
   });
 }
 
+function closeGoalModal() {
+  document.querySelector('.goal-modal-backdrop')?.remove();
+}
+
+function openGoalEditModal(goal, mode = 'edit') {
+  closeGoalModal();
+
+  const isAmountMode = mode === 'amount';
+  const backdrop = document.createElement('div');
+  backdrop.className = 'goal-modal-backdrop';
+  backdrop.innerHTML = `
+    <form class="goal-modal" role="dialog" aria-modal="true">
+      <div class="goal-modal-head">
+        <strong>${isAmountMode ? 'изменить сумму' : 'редактировать цель'}</strong>
+        <button class="goal-modal-close" type="button" aria-label="Закрыть">×</button>
+      </div>
+      ${isAmountMode ? '' : `
+        <label class="field-label">название</label>
+        <input class="text-input goal-edit-name" type="text" value="${escapeHtml(goal.name)}" autocomplete="off" />
+        <label class="field-label">цель</label>
+        <input class="text-input goal-edit-target" inputmode="decimal" value="${Number(goal.target || 0)}" autocomplete="off" />
+      `}
+      <label class="field-label">накоплено сейчас</label>
+      <input class="text-input goal-edit-current" inputmode="decimal" value="${Number(goal.current || 0)}" autocomplete="off" />
+      <div class="goal-modal-actions">
+        <button class="secondary-btn" type="button" data-goal-modal-cancel>отмена</button>
+        <button class="primary-btn" type="submit">сохранить</button>
+      </div>
+    </form>
+  `;
+
+  document.body.appendChild(backdrop);
+
+  const form = backdrop.querySelector('.goal-modal');
+  const closeButton = backdrop.querySelector('.goal-modal-close');
+  const cancelButton = backdrop.querySelector('[data-goal-modal-cancel]');
+  const saveButton = form.querySelector('button[type="submit"]');
+
+  setTimeout(() => form.querySelector('input')?.focus(), 60);
+
+  backdrop.addEventListener('click', e => {
+    if (e.target === backdrop) closeGoalModal();
+  });
+  closeButton.addEventListener('click', closeGoalModal);
+  cancelButton.addEventListener('click', closeGoalModal);
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    if (saveButton.disabled) return;
+
+    const updates = {
+      current: parseAmount(form.querySelector('.goal-edit-current')?.value),
+    };
+
+    if (!isAmountMode) {
+      updates.name = form.querySelector('.goal-edit-name')?.value.trim() || goal.name;
+      updates.target = parseAmount(form.querySelector('.goal-edit-target')?.value);
+      if (!updates.name || !updates.target) return;
+    }
+
+    setButtonLoading(saveButton, true, 'сохраняю');
+    try {
+      await updateGoal(goal.id, updates);
+      closeGoalModal();
+      showToast('цель обновлена');
+      haptic(18);
+    } catch (err) {
+      showToast(`ошибка: ${err.message}`);
+      setButtonLoading(saveButton, false);
+    }
+  });
+}
+
+function openGoalDeleteModal(goal) {
+  closeGoalModal();
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'goal-modal-backdrop';
+  backdrop.innerHTML = `
+    <div class="goal-modal goal-delete-modal" role="dialog" aria-modal="true">
+      <div class="goal-modal-head">
+        <strong>удалить цель?</strong>
+        <button class="goal-modal-close" type="button" aria-label="Закрыть">×</button>
+      </div>
+      <p>Цель «${escapeHtml(goal.name)}» удалится без восстановления</p>
+      <div class="goal-modal-actions">
+        <button class="secondary-btn" type="button" data-goal-modal-cancel>отмена</button>
+        <button class="primary-btn danger-btn" type="button" data-goal-delete-confirm>удалить</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(backdrop);
+
+  const closeButton = backdrop.querySelector('.goal-modal-close');
+  const cancelButton = backdrop.querySelector('[data-goal-modal-cancel]');
+  const deleteButton = backdrop.querySelector('[data-goal-delete-confirm]');
+
+  backdrop.addEventListener('click', e => {
+    if (e.target === backdrop) closeGoalModal();
+  });
+  closeButton.addEventListener('click', closeGoalModal);
+  cancelButton.addEventListener('click', closeGoalModal);
+
+  deleteButton.addEventListener('click', async () => {
+    if (deleteButton.disabled) return;
+    setButtonLoading(deleteButton, true, 'удаляю');
+    try {
+      await deleteGoal(goal.id);
+      closeGoalModal();
+      showToast('цель удалена');
+      haptic(18);
+    } catch (err) {
+      showToast(`ошибка: ${err.message}`);
+      setButtonLoading(deleteButton, false);
+    }
+  });
+}
+
 function renderHistory() {
   renderHistoryFilters();
   const list = $('historyList');
@@ -675,7 +871,7 @@ function renderHistory() {
     .filter(op => op.type !== 'initial')
     .filter(op => state.historyAccount === 'all' || op.account === state.historyAccount)
     .filter(op => state.historyCategory === 'all' || op.category === state.historyCategory)
-    .sort((a, b) => operationDate(b) - operationDate(a))
+    .sort(compareOperationsNewestFirst)
     .slice(0, 90);
 
   if (!rows.length) { list.innerHTML = '<div class="empty-state">история пока пустая</div>'; return; }
@@ -745,6 +941,13 @@ function setButtonLoading(button, isLoading, loadingText = 'сохраняю') {
 }
 
 function bindEvents() {
+  document.addEventListener('click', () => {
+    if (state.goalActionMenuId) {
+      state.goalActionMenuId = null;
+      renderGoals();
+    }
+  });
+
   $('syncButton').addEventListener('click', loadData);
   document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => {
     haptic(6);

@@ -880,3 +880,175 @@ button:disabled {
     grid-template-columns: repeat(6, 1fr);
   }
 }
+
+/* v21: separate goal cards + goal actions */
+.goals-card {
+  margin-bottom: 12px;
+}
+
+.goals-list-separated {
+  display: grid;
+  gap: 12px;
+}
+
+.goals-list-separated .goal-card {
+  position: relative;
+  background: rgba(255,255,255,0.88);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+  padding: 16px;
+}
+
+.goals-empty-state {
+  background: rgba(255,255,255,0.72);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: 0 10px 26px rgba(15,23,42,.05);
+}
+
+.goal-card-actions {
+  position: relative;
+  display: flex !important;
+  align-items: center;
+  gap: 8px !important;
+  flex: 0 0 auto;
+}
+
+.goal-menu-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: #f3f5fa;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.1em;
+  display: grid;
+  place-items: center;
+}
+
+.goal-menu-btn:active {
+  transform: scale(.94);
+}
+
+.goal-menu {
+  position: absolute;
+  top: 38px;
+  right: 0;
+  z-index: 40;
+  min-width: 180px;
+  padding: 6px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.96);
+  border: 1px solid var(--line);
+  box-shadow: 0 20px 45px rgba(15,23,42,.16);
+  backdrop-filter: blur(18px);
+  display: none !important;
+}
+
+.goal-menu.open {
+  display: grid !important;
+  gap: 2px;
+  animation: menuIn .14s ease both;
+}
+
+.goal-menu button {
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 13px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.goal-menu button:active,
+.goal-menu button:hover {
+  background: #f3f5fa;
+}
+
+.goal-menu button.danger {
+  color: #dc2626;
+}
+
+.goal-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(15,23,42,.22);
+  backdrop-filter: blur(8px);
+  animation: modalFadeIn .16s ease both;
+}
+
+.goal-modal {
+  width: min(100%, 420px);
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 26px;
+  background: rgba(255,255,255,.96);
+  border: 1px solid rgba(15,23,42,.08);
+  box-shadow: 0 24px 70px rgba(15,23,42,.22);
+  animation: modalPopIn .2s cubic-bezier(.2,.8,.2,1) both;
+}
+
+.goal-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.goal-modal-head strong {
+  font-size: 20px;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+
+.goal-modal-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: #f3f5fa;
+  color: var(--muted);
+  font-size: 24px;
+  display: grid;
+  place-items: center;
+}
+
+.goal-modal-actions {
+  display: grid;
+  grid-template-columns: .7fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.goal-modal-actions .primary-btn,
+.goal-modal-actions .secondary-btn {
+  margin: 0;
+  min-height: 48px;
+}
+
+.goal-delete-modal p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.danger-btn {
+  background: #dc2626 !important;
+  color: #fff !important;
+}
+
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(-4px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
