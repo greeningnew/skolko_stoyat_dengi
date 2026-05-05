@@ -18,11 +18,11 @@ const state = {
 const baseExpenseCategories = [
   ['продукты', 'food'], ['транспорт', 'transport'], ['еда вне дома', 'restaurant'], ['курение', 'smoking'], ['здоровье', 'health'],
   ['спорт', 'sport'], ['одежда', 'clothes'], ['подписки', 'subscriptions'], ['развлечения', 'entertainment'],
-  ['дом', '🏠'], ['аренда квартиры', '🏠'], ['оплаты за сдачу жилья', '🏠'],
+  ['дом', 'home'], ['аренда квартиры', 'home'], ['оплаты за сдачу жилья', 'home'],
   ['кредиты', 'credit'], ['бизнес', 'business'], ['долг', 'debt'], ['другое', 'other'],
 ];
 const baseIncomeCategories = [
-  ['зп nonteam', '💼'], ['фриланс', '⚡'], ['сдача жилья', '🏠'], ['подарки', '🎁'], ['прочее', '•••'],
+  ['зп nonteam', 'business'], ['фриланс', 'business'], ['сдача жилья', 'home'], ['подарки', 'other'], ['прочее', 'other'],
 ];
 const accounts = [['карта', '💳'], ['наличка', '💵'], ['крипта', '🟡₿'], ['другое', '•••']];
 const colors = ['#3B5BFF', '#22C7A9', '#F59E0B', '#EF476F', '#8B5CF6', '#14B8A6', '#94A3B8', '#60A5FA', '#111827', '#6C8CFF'];
@@ -651,10 +651,13 @@ function renderHistory() {
     ].filter(Boolean).join(' · ');
 
     const rowsHtml = items.map(op => {
-      const icon = allCategoryItems().find(([name]) => name === op.category)?.[1] || '•';
+      const icon = allCategoryItems().find(([name]) => name === op.category)?.[1] || 'other';
       const sign = op.type === 'income' ? '+' : '-';
       return `<div class="history-item">
-        <div class="history-title"><strong>${icon} ${op.category}</strong><span class="history-meta">${op.account}${op.comment ? ' · ' + op.comment : ''}</span></div>
+        <div class="history-title">
+          <strong><span class="history-icon-wrap">${iconMarkup(icon, 'history-icon')}</span><span>${op.category}</span></strong>
+          <span class="history-meta">${op.account}${op.comment ? ' · ' + op.comment : ''}</span>
+        </div>
         <strong class="history-amount ${op.type}">${sign}${formatMoney(op.amount)}</strong>
       </div>`;
     }).join('');
