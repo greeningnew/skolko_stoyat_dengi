@@ -2337,3 +2337,269 @@ button:active,
     left: calc(50% + 90px) !important;
   }
 }
+
+/* v28 desktop cleanup: real header nav + stable content grid */
+@media (min-width: 900px) {
+  :root {
+    --desktop-max: 1180px;
+    --desktop-gap: 22px;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  .app {
+    width: min(calc(100% - 56px), var(--desktop-max)) !important;
+    max-width: var(--desktop-max) !important;
+    margin: 0 auto !important;
+    padding: 22px 0 64px !important;
+  }
+
+  .topbar {
+    position: sticky !important;
+    top: 0;
+    z-index: 70;
+    min-height: 54px;
+    display: grid !important;
+    grid-template-columns: minmax(260px, 1fr) auto auto;
+    align-items: center;
+    gap: 16px;
+    padding: 0 0 22px !important;
+    background: linear-gradient(180deg, rgba(248,250,255,.92), rgba(248,250,255,.62) 72%, rgba(248,250,255,0));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .brand {
+    justify-self: start;
+    min-width: 0;
+  }
+
+  .brand-logo {
+    width: 34px !important;
+    height: 34px !important;
+  }
+
+  h1 {
+    font-size: 20px !important;
+    white-space: nowrap;
+  }
+
+  .topbar .bottom-nav {
+    position: static !important;
+    transform: none !important;
+    left: auto !important;
+    top: auto !important;
+    bottom: auto !important;
+    width: auto !important;
+    display: flex !important;
+    grid-template-columns: none !important;
+    gap: 4px !important;
+    padding: 5px !important;
+    border-radius: 20px !important;
+    background: rgba(255,255,255,.78);
+    border: 1px solid var(--line);
+    box-shadow: 0 14px 34px rgba(15,23,42,.08);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  .topbar .nav-btn {
+    min-width: 84px !important;
+    width: auto !important;
+    height: 40px !important;
+    padding: 0 12px !important;
+    border-radius: 15px !important;
+    font-size: 12.5px !important;
+    line-height: 1 !important;
+    white-space: nowrap;
+  }
+
+  .icon-button {
+    position: static !important;
+    justify-self: end;
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 17px !important;
+  }
+
+  .screen.active {
+    width: 100%;
+    max-width: var(--desktop-max);
+  }
+
+  .balance-card,
+  .entry-card,
+  .analytics-card {
+    padding: 24px !important;
+    border-radius: 28px !important;
+  }
+
+  #screen-home.active {
+    display: grid !important;
+    grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr) !important;
+    gap: var(--desktop-gap) !important;
+    align-items: stretch !important;
+  }
+
+  #screen-home .balance-card,
+  #screen-home .entry-card {
+    min-height: 228px;
+    height: 100%;
+    margin: 0 !important;
+  }
+
+  .balance-card > strong {
+    font-size: clamp(56px, 5vw, 70px) !important;
+  }
+
+  .account-inline {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .account-pill {
+    min-width: 0 !important;
+    padding: 7px 10px !important;
+    font-size: 12px !important;
+  }
+
+  .account-pill strong {
+    font-size: 13px !important;
+  }
+
+  #screen-income.active,
+  #screen-goals.active,
+  #screen-history.active {
+    display: block !important;
+  }
+
+  #screen-income .entry-card,
+  #screen-goals .analytics-card,
+  #screen-history .analytics-card {
+    width: 100% !important;
+    max-width: 980px !important;
+    margin: 0 !important;
+  }
+
+  #screen-analytics .analytics-main-card {
+    width: 100% !important;
+    max-width: 1180px !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr) !important;
+    gap: 18px 24px !important;
+    align-items: start !important;
+  }
+
+  .analytics-main-card > h2 {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+  }
+
+  .analytics-main-card .month-switcher,
+  .analytics-main-card .analytics-toggle,
+  .analytics-main-card .compact-summary,
+  .analytics-main-card .chart-title,
+  .analytics-main-card .chart-wrap {
+    grid-column: 1 !important;
+  }
+
+  .analytics-main-card .legend-list {
+    grid-column: 2 !important;
+    grid-row: 2 / span 5 !important;
+    display: grid;
+    gap: 8px;
+    align-self: start;
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  .legend-row {
+    min-height: 42px;
+    padding: 10px 12px !important;
+    border-radius: 15px !important;
+  }
+
+  .compact-chart,
+  .chart-wrap {
+    min-height: 230px !important;
+  }
+
+  .compact-chart canvas,
+  #categoryChart {
+    width: 220px !important;
+    height: 220px !important;
+  }
+
+  .goals-card {
+    max-width: 760px !important;
+  }
+
+  .goals-list,
+  .goals-list-separated {
+    max-width: 760px;
+    margin-top: 14px;
+  }
+
+  .goals-empty-state {
+    max-width: 760px;
+  }
+
+  .history-filters {
+    grid-template-columns: minmax(180px, 1fr) minmax(220px, 1fr) 48px !important;
+    gap: 10px !important;
+    align-items: center;
+  }
+
+  .history-date-button {
+    width: 48px;
+    min-width: 48px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .app {
+    width: min(calc(100% - 72px), 1220px) !important;
+    max-width: 1220px !important;
+  }
+
+  .topbar {
+    grid-template-columns: minmax(320px, 1fr) auto auto;
+  }
+
+  .topbar .nav-btn {
+    min-width: 92px !important;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1040px) {
+  .topbar {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "brand sync"
+      "nav nav";
+    row-gap: 12px;
+  }
+
+  .brand { grid-area: brand; }
+  .icon-button { grid-area: sync; }
+  .topbar .bottom-nav {
+    grid-area: nav;
+    justify-self: center;
+  }
+
+  #screen-home.active {
+    grid-template-columns: 1fr !important;
+  }
+
+  #screen-analytics .analytics-main-card {
+    grid-template-columns: 1fr !important;
+  }
+
+  .analytics-main-card .legend-list {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+  }
+}
