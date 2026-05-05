@@ -1958,3 +1958,238 @@ button:active,
   .history-filters { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; }
   .legend-row { padding: 9px 10px; }
 }
+
+/* v26 desktop responsive layout */
+@media (min-width: 900px) {
+  body {
+    background:
+      radial-gradient(circle at 82% -8%, rgba(59, 91, 255, 0.13), transparent 30%),
+      radial-gradient(circle at 18% 12%, rgba(34, 199, 169, 0.06), transparent 28%),
+      linear-gradient(180deg, #fbfcff 0%, var(--bg) 45%, #eef1f7 100%);
+  }
+
+  .app {
+    width: min(calc(100% - 190px), 1180px);
+    max-width: 1180px;
+    min-height: 100vh;
+    margin: 0 auto 0 160px;
+    padding: 28px 32px 48px;
+  }
+
+  .app::after {
+    display: none;
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+    padding: 10px 2px 22px;
+    backdrop-filter: blur(18px);
+  }
+
+  .brand-logo {
+    width: 44px;
+    height: 44px;
+  }
+
+  h1 {
+    font-size: 24px;
+  }
+
+  h2 {
+    font-size: 24px;
+  }
+
+  .icon-button {
+    width: 48px;
+    height: 48px;
+    border-radius: 17px;
+  }
+
+  .screen.active {
+    animation: screenIn .18s ease both;
+  }
+
+  #screen-home.active {
+    display: grid;
+    grid-template-columns: minmax(340px, .92fr) minmax(430px, 1.08fr);
+    gap: 18px;
+    align-items: start;
+  }
+
+  #screen-home .balance-card,
+  #screen-home .entry-card {
+    margin-bottom: 0;
+  }
+
+  .balance-card,
+  .entry-card,
+  .analytics-card {
+    border-radius: 28px;
+  }
+
+  .balance-card {
+    padding: 22px;
+  }
+
+  .balance-card > strong {
+    font-size: clamp(50px, 5.6vw, 72px);
+    margin: 10px 0 18px;
+  }
+
+  .account-inline {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px !important;
+  }
+
+  .account-pill {
+    min-height: 34px;
+    padding: 8px 10px !important;
+    font-size: 12px !important;
+    gap: 6px !important;
+  }
+
+  .account-pill strong {
+    font-size: 13px !important;
+  }
+
+  .entry-card,
+  .analytics-card {
+    padding: 22px;
+  }
+
+  .entry-head {
+    margin-bottom: 16px;
+  }
+
+  .money-input-wrap {
+    height: 56px;
+  }
+
+  .money-input {
+    font-size: 30px;
+  }
+
+  .chips {
+    gap: 8px;
+  }
+
+  .chip {
+    min-height: 38px;
+    padding: 9px 12px;
+    font-size: 13px;
+  }
+
+  #screen-income.active,
+  #screen-goals.active {
+    display: block;
+  }
+
+  #screen-income .entry-card,
+  #screen-goals .analytics-card {
+    max-width: 720px;
+  }
+
+  #screen-analytics.active {
+    display: block;
+  }
+
+  .analytics-main-card {
+    display: grid;
+    grid-template-columns: minmax(320px, .9fr) minmax(380px, 1.1fr);
+    gap: 14px 22px;
+    align-items: start;
+  }
+
+  .analytics-main-card > h2 {
+    grid-column: 1 / -1;
+  }
+
+  .analytics-main-card .month-switcher,
+  .analytics-main-card .analytics-toggle,
+  .analytics-main-card .compact-summary,
+  .analytics-main-card .chart-title,
+  .analytics-main-card .chart-wrap {
+    grid-column: 1;
+  }
+
+  .analytics-main-card .legend-list {
+    grid-column: 2;
+    grid-row: 2 / span 5;
+    align-self: stretch;
+    max-height: calc(100vh - 220px);
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+
+  .compact-chart {
+    min-height: 250px;
+  }
+
+  .compact-chart canvas {
+    width: 240px;
+    height: 240px;
+  }
+
+  .legend-row {
+    padding: 11px 13px;
+  }
+
+  #screen-history.active .analytics-card {
+    max-width: 980px;
+  }
+
+  .history-filters {
+    grid-template-columns: minmax(170px, 220px) minmax(170px, 240px) 48px;
+    justify-content: start;
+  }
+
+  .history-item {
+    padding: 12px 14px;
+  }
+
+  .bottom-nav {
+    left: 24px;
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+    width: 112px;
+    grid-template-columns: 1fr !important;
+    gap: 6px;
+    padding: 8px;
+    border-radius: 26px;
+  }
+
+  .nav-btn {
+    height: 50px;
+    border-radius: 18px;
+    font-size: 13px;
+    line-height: 1.05;
+  }
+
+  .modal-panel,
+  .category-modal-panel,
+  .calendar-modal-panel,
+  .goal-modal-panel {
+    max-width: 520px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .app {
+    width: min(calc(100% - 230px), 1240px);
+    max-width: 1240px;
+    margin-left: 180px;
+  }
+
+  #screen-home.active {
+    grid-template-columns: minmax(390px, .9fr) minmax(500px, 1.1fr);
+    gap: 22px;
+  }
+
+  .bottom-nav {
+    left: 32px;
+    width: 124px;
+  }
+}
