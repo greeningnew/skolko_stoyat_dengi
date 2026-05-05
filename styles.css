@@ -728,3 +728,67 @@ button:disabled {
     grid-template-columns: repeat(6, 1fr);
   }
 }
+
+
+/* v18 visual fixes: category icons, history amounts, add-category chip */
+.chip.active .ico img {
+  filter: brightness(0) invert(1);
+}
+
+.add-category-chip {
+  background: #f3f5fa;
+  color: var(--text);
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+.add-category-chip .ico {
+  color: var(--blue);
+  background: rgba(59, 91, 255, 0.10);
+}
+
+.history-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.history-title {
+  min-width: 0;
+}
+
+.history-title strong {
+  min-width: 0;
+}
+
+.history-title strong span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-icon-wrap {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+}
+
+.history-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  margin: 0;
+}
+
+.history-amount {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  text-align: right;
+  min-width: max-content;
+  font-size: 17px;
+  line-height: 1.05;
+}
