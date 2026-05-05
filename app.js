@@ -16,6 +16,7 @@ const state = {
   historyExpanded: false,
   historyDateFrom: '',
   historyDateTo: '',
+  calendarView: new Date(),
   expense: { type: 'expense', amount: '', category: 'продукты', account: 'карта', date: '', comment: '' },
   income: { type: 'income', amount: '', category: 'зп nonteam', account: 'карта', date: '', comment: '' },
 };
@@ -546,8 +547,6 @@ function openCategoryModal(type) {
   const closeButton = backdrop.querySelector('.category-modal-close');
   let selectedIcon = 'other';
 
-  setTimeout(() => input.focus(), 60);
-
   backdrop.addEventListener('click', e => {
     if (e.target === backdrop) closeCategoryModal();
   });
@@ -650,7 +649,7 @@ function renderDonut(canvasId, legendId, data, total) {
   const legend = $(legendId);
   if (!canvas || !legend) return;
 
-  const size = 210;
+  const size = 198;
   const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 3));
   canvas.width = size * dpr;
   canvas.height = size * dpr;
@@ -662,9 +661,9 @@ function renderDonut(canvasId, legendId, data, total) {
   ctx.clearRect(0, 0, size, size);
 
   const center = size / 2;
-  const radius = 70;
-  const lineWidth = 26;
-  const innerRadius = radius - lineWidth / 2 - 6;
+  const radius = 67;
+  const lineWidth = 24;
+  const innerRadius = radius - lineWidth / 2 - 5;
 
   if (!total || data.length === 0) {
     legend.innerHTML = '<div class="empty-state">пока мало данных</div>';
@@ -690,18 +689,6 @@ function renderDonut(canvasId, legendId, data, total) {
     ctx.lineWidth = lineWidth;
     ctx.lineCap = 'butt';
     ctx.stroke();
-
-    const percent = Math.round(item.value / total * 100);
-    if (angle > 0.5 && percent >= 5) {
-      const mid = start + angle / 2;
-      const x = center + Math.cos(mid) * radius;
-      const y = center + Math.sin(mid) * radius;
-      ctx.fillStyle = '#fff';
-      ctx.font = '850 12px -apple-system, BlinkMacSystemFont, Segoe UI';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(`${percent}%`, x, y);
-    }
     start += angle;
   });
 
@@ -722,8 +709,7 @@ function renderDonut(canvasId, legendId, data, total) {
   legend.innerHTML = data.map(item => `
     <div class="legend-row">
       <div class="legend-left"><i class="legend-dot" style="background:${item.color}"></i><span class="legend-name">${escapeHtml(item.name)}</span></div>
-      <strong>${formatMoney(item.value)}</strong>
-      <span class="legend-percent">${Math.round(item.value / total * 100)}%</span>
+      <div class="legend-metrics"><strong>${formatMoney(item.value)}</strong><span class="legend-percent">${Math.round(item.value / total * 100)}%</span></div>
     </div>
   `).join('');
 }
@@ -963,7 +949,7 @@ function isOperationInHistoryDateRange(op) {
 }
 
 function historyDateLabel() {
-  if (!hasHistoryDateFilter()) return 'дата';
+  if (!hasHistoryDateFilter()) return '';
   const from = state.historyDateFrom;
   const to = state.historyDateTo;
   if (from && to && from === to) return formatShortDateLabel(from);
@@ -978,66 +964,179 @@ function formatShortDateLabel(value) {
   return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '');
 }
 
+function formatFullDateLabel(value) {
+  const date = parseDateSafe(value);
+  if (!date) return 'выбрать дату';
+  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function updateDateButtons() {
+  const expenseButton = $('expenseDateButton');
+  const incomeButton = $('incomeDateButton');
+  if (expenseButton) expenseButton.textContent = formatFullDateLabel($('expenseDate')?.value || todayISO());
+  if (incomeButton) incomeButton.textContent = formatFullDateLabel($('incomeDate')?.value || todayISO());
+}
+
+function isoFromDate(date) {
+  const tz = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - tz).toISOString().slice(0, 10);
+}
+
+function monthTitle(date) {
+  return `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+function openSingleDatePicker({ title = 'выберите дату', initialValue = todayISO(), onSelect }) {
+  const initialDate = parseDateSafe(initialValue) || new Date();
+  openCalendarModal({
+    mode: 'single',
+    title,
+    initialFrom: isoFromDate(initialDate),
+    initialTo: isoFromDate(initialDate),
+    onApply: ({ from }) => onSelect(from || todayISO()),
+  });
+}
+
 function openHistoryDateModal() {
+  openCalendarModal({
+    mode: 'range',
+    title: 'период истории',
+    initialFrom: state.historyDateFrom,
+    initialTo: state.historyDateTo,
+    onApply: ({ from, to }) => {
+      state.historyDateFrom = from || '';
+      state.historyDateTo = to || '';
+      if (state.historyDateFrom && state.historyDateTo && state.historyDateFrom > state.historyDateTo) {
+        const tmp = state.historyDateFrom;
+        state.historyDateFrom = state.historyDateTo;
+        state.historyDateTo = tmp;
+      }
+      state.historyExpanded = true;
+      renderHistory();
+    },
+    onClear: () => {
+      state.historyDateFrom = '';
+      state.historyDateTo = '';
+      state.historyExpanded = false;
+      renderHistory();
+    }
+  });
+}
+
+function openCalendarModal({ mode, title, initialFrom = '', initialTo = '', onApply, onClear }) {
   closeHistoryDateModal();
   const backdrop = document.createElement('div');
-  backdrop.className = 'history-date-backdrop';
+  backdrop.className = 'history-date-backdrop calendar-backdrop';
+
+  let selectedFrom = initialFrom || '';
+  let selectedTo = mode === 'range' ? (initialTo || '') : selectedFrom;
+  let view = parseDateSafe(selectedFrom || selectedTo) || new Date();
+  view = new Date(view.getFullYear(), view.getMonth(), 1);
+
   backdrop.innerHTML = `
-    <form class="history-date-modal" role="dialog" aria-modal="true">
-      <div class="history-date-head">
-        <strong>период истории</strong>
+    <div class="history-date-modal calendar-modal" role="dialog" aria-modal="true">
+      <div class="history-date-head calendar-head">
+        <strong>${escapeHtml(title)}</strong>
         <button class="history-date-close" type="button" aria-label="Закрыть">×</button>
       </div>
-      <label class="field-label">с даты</label>
-      <input class="text-input history-date-from" type="date" value="${escapeHtml(state.historyDateFrom)}" />
-      <label class="field-label">по дату</label>
-      <input class="text-input history-date-to" type="date" value="${escapeHtml(state.historyDateTo)}" />
+      <div class="calendar-topline">
+        <button type="button" class="calendar-arrow" data-calendar-prev aria-label="Предыдущий месяц">‹</button>
+        <strong data-calendar-title>${monthTitle(view)}</strong>
+        <button type="button" class="calendar-arrow" data-calendar-next aria-label="Следующий месяц">›</button>
+      </div>
+      <div class="calendar-weekdays"><span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span></div>
+      <div class="calendar-grid" data-calendar-grid></div>
+      <div class="calendar-selected" data-calendar-selected></div>
       <div class="history-date-quick">
         <button type="button" data-history-date-today>сегодня</button>
         <button type="button" data-history-date-clear>сбросить</button>
       </div>
       <div class="history-date-actions">
         <button class="secondary-btn" type="button" data-history-date-cancel>отмена</button>
-        <button class="primary-btn" type="submit">применить</button>
+        <button class="primary-btn" type="button" data-calendar-apply>применить</button>
       </div>
-    </form>
+    </div>
   `;
   document.body.appendChild(backdrop);
 
-  const form = backdrop.querySelector('.history-date-modal');
-  const fromInput = backdrop.querySelector('.history-date-from');
-  const toInput = backdrop.querySelector('.history-date-to');
-  const close = () => closeHistoryDateModal();
+  const grid = backdrop.querySelector('[data-calendar-grid]');
+  const titleEl = backdrop.querySelector('[data-calendar-title]');
+  const selectedEl = backdrop.querySelector('[data-calendar-selected]');
 
-  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
-  backdrop.querySelector('.history-date-close').addEventListener('click', close);
-  backdrop.querySelector('[data-history-date-cancel]').addEventListener('click', close);
+  function selectedLabel() {
+    if (mode === 'single') return selectedFrom ? formatFullDateLabel(selectedFrom) : 'дата не выбрана';
+    if (selectedFrom && selectedTo && selectedFrom !== selectedTo) return `${formatShortDateLabel(selectedFrom)} — ${formatShortDateLabel(selectedTo)}`;
+    if (selectedFrom) return `с ${formatShortDateLabel(selectedFrom)}`;
+    if (selectedTo) return `до ${formatShortDateLabel(selectedTo)}`;
+    return 'период не выбран';
+  }
+
+  function renderCalendar() {
+    titleEl.textContent = monthTitle(view);
+    selectedEl.textContent = selectedLabel();
+    const first = new Date(view.getFullYear(), view.getMonth(), 1);
+    const daysInMonth = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
+    const startOffset = (first.getDay() + 6) % 7;
+    const cells = [];
+    for (let i = 0; i < startOffset; i++) cells.push('<span class="calendar-day ghost"></span>');
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(view.getFullYear(), view.getMonth(), day);
+      const iso = isoFromDate(d);
+      const isSelected = iso === selectedFrom || iso === selectedTo;
+      const inRange = mode === 'range' && selectedFrom && selectedTo && iso > selectedFrom && iso < selectedTo;
+      const today = iso === todayISO();
+      cells.push(`<button type="button" class="calendar-day ${isSelected ? 'selected' : ''} ${inRange ? 'in-range' : ''} ${today ? 'today' : ''}" data-date="${iso}">${day}</button>`);
+    }
+    grid.innerHTML = cells.join('');
+    grid.querySelectorAll('[data-date]').forEach(button => button.addEventListener('click', () => {
+      const value = button.dataset.date;
+      if (mode === 'single') {
+        selectedFrom = value;
+        selectedTo = value;
+      } else if (!selectedFrom || (selectedFrom && selectedTo)) {
+        selectedFrom = value;
+        selectedTo = '';
+      } else {
+        selectedTo = value;
+        if (selectedFrom > selectedTo) {
+          const tmp = selectedFrom;
+          selectedFrom = selectedTo;
+          selectedTo = tmp;
+        }
+      }
+      haptic(6);
+      renderCalendar();
+    }));
+  }
+
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) closeHistoryDateModal(); });
+  backdrop.querySelector('.history-date-close').addEventListener('click', closeHistoryDateModal);
+  backdrop.querySelector('[data-history-date-cancel]').addEventListener('click', closeHistoryDateModal);
+  backdrop.querySelector('[data-calendar-prev]').addEventListener('click', () => { view.setMonth(view.getMonth() - 1); renderCalendar(); haptic(4); });
+  backdrop.querySelector('[data-calendar-next]').addEventListener('click', () => { view.setMonth(view.getMonth() + 1); renderCalendar(); haptic(4); });
   backdrop.querySelector('[data-history-date-today]').addEventListener('click', () => {
     const today = todayISO();
-    fromInput.value = today;
-    toInput.value = today;
+    selectedFrom = today;
+    selectedTo = mode === 'range' ? today : today;
+    view = parseDateSafe(today) || new Date();
+    view = new Date(view.getFullYear(), view.getMonth(), 1);
+    renderCalendar();
     haptic(6);
   });
   backdrop.querySelector('[data-history-date-clear]').addEventListener('click', () => {
-    fromInput.value = '';
-    toInput.value = '';
+    selectedFrom = '';
+    selectedTo = '';
+    if (onClear) onClear();
+    renderCalendar();
     haptic(6);
   });
-
-  form.addEventListener('submit', e => {
-    e.preventDefault();
-    state.historyDateFrom = fromInput.value || '';
-    state.historyDateTo = toInput.value || '';
-    if (state.historyDateFrom && state.historyDateTo && state.historyDateFrom > state.historyDateTo) {
-      const tmp = state.historyDateFrom;
-      state.historyDateFrom = state.historyDateTo;
-      state.historyDateTo = tmp;
-    }
-    state.historyExpanded = true;
+  backdrop.querySelector('[data-calendar-apply]').addEventListener('click', () => {
+    onApply({ from: selectedFrom, to: selectedTo || selectedFrom });
     closeHistoryDateModal();
-    renderHistory();
     haptic(8);
   });
+
+  renderCalendar();
 }
 
 function closeHistoryDateModal() {
@@ -1051,8 +1150,7 @@ function renderHistory() {
   const dateButton = $('historyDateButton');
   if (dateButton) {
     dateButton.classList.toggle('active', hasHistoryDateFilter());
-    const label = dateButton.querySelector('span');
-    if (label) label.textContent = historyDateLabel();
+    dateButton.title = historyDateLabel() || 'фильтр по дате';
   }
 
   let allRows = [...state.operations]
@@ -1062,18 +1160,19 @@ function renderHistory() {
     .filter(op => !hasHistoryDateFilter() || isOperationInHistoryDateRange(op))
     .sort(compareOperationsNewestFirst);
 
-  const todayRows = allRows.filter(op => dateKey(op) === todayISO());
-  const shouldLimitToToday = !state.historyExpanded && !hasHistoryDateFilter() && state.historyAccount === 'all' && state.historyCategory === 'all';
-  const rows = shouldLimitToToday ? todayRows : allRows.slice(0, 120);
+  const shouldLimitToLastDay = !state.historyExpanded && !hasHistoryDateFilter() && state.historyAccount === 'all' && state.historyCategory === 'all';
+  const latestKey = allRows[0] ? dateKey(allRows[0]) : '';
+  const latestRows = latestKey ? allRows.filter(op => dateKey(op) === latestKey) : [];
+  const rows = shouldLimitToLastDay ? latestRows : allRows.slice(0, 160);
 
   if (toggle) {
-    const canToggle = !hasHistoryDateFilter() && allRows.length > todayRows.length;
+    const canToggle = !hasHistoryDateFilter() && allRows.length > latestRows.length;
     toggle.hidden = !canToggle;
-    toggle.textContent = state.historyExpanded ? 'показать только сегодня' : 'показать все';
+    toggle.textContent = state.historyExpanded ? 'показать последний день' : 'показать все';
   }
 
   if (!rows.length) {
-    const message = shouldLimitToToday ? 'сегодня операций нет' : 'история пока пустая';
+    const message = hasHistoryDateFilter() ? 'за период операций нет' : 'история пока пустая';
     list.innerHTML = `<div class="empty-state">${message}</div>`;
     return;
   }
@@ -1192,6 +1291,14 @@ function bindEvents() {
     openHistoryDateModal();
     haptic(6);
   });
+  if ($('expenseDateButton')) $('expenseDateButton').addEventListener('click', () => {
+    openSingleDatePicker({ title: 'дата траты', initialValue: $('expenseDate').value || todayISO(), onSelect: value => { $('expenseDate').value = value; updateDateButtons(); } });
+    haptic(6);
+  });
+  if ($('incomeDateButton')) $('incomeDateButton').addEventListener('click', () => {
+    openSingleDatePicker({ title: 'дата дохода', initialValue: $('incomeDate').value || todayISO(), onSelect: value => { $('incomeDate').value = value; updateDateButtons(); } });
+    haptic(6);
+  });
   if ($('historyShowAll')) $('historyShowAll').addEventListener('click', () => {
     state.historyExpanded = !state.historyExpanded;
     renderHistory();
@@ -1213,6 +1320,7 @@ function bindEvents() {
       $('expenseAmount').value = '';
       $('expenseComment').value = '';
       $('expenseDate').value = todayISO();
+      updateDateButtons();
       setExpenseStep(1);
     } catch (err) {
       showToast(`ошибка: ${err.message}`);
@@ -1235,6 +1343,7 @@ function bindEvents() {
       $('incomeAmount').value = '';
       $('incomeComment').value = '';
       $('incomeDate').value = todayISO();
+      updateDateButtons();
       setIncomeStep(1);
     } catch (err) {
       showToast(`ошибка: ${err.message}`);
@@ -1269,6 +1378,7 @@ function bindEvents() {
 function init() {
   $('expenseDate').value = todayISO();
   $('incomeDate').value = todayISO();
+  updateDateButtons();
   bindEvents();
   renderAll();
   loadData();
