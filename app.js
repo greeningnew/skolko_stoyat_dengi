@@ -683,7 +683,6 @@ function renderGoals() {
           <button class="goal-menu-btn" type="button" data-goal-menu="${safeId}" aria-label="Действия с целью">•••</button>
           <div class="goal-menu ${menuOpened ? 'open' : ''}" data-goal-menu-panel="${safeId}">
             <button type="button" data-goal-action="edit" data-goal-id="${safeId}">редактировать</button>
-            <button type="button" data-goal-action="amount" data-goal-id="${safeId}">изменить сумму</button>
             <button type="button" class="danger" data-goal-action="delete" data-goal-id="${safeId}">удалить</button>
           </div>
         </div>
@@ -717,7 +716,6 @@ function renderGoals() {
       if (!goal) return;
 
       if (action === 'edit') openGoalEditModal(goal, 'edit');
-      if (action === 'amount') openGoalEditModal(goal, 'amount');
       if (action === 'delete') openGoalDeleteModal(goal);
     });
   });
