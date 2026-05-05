@@ -13,6 +13,9 @@ const state = {
   analyticsType: 'expense',
   historyAccount: 'all',
   historyCategory: 'all',
+  historyExpanded: false,
+  historyDateFrom: '',
+  historyDateTo: '',
   expense: { type: 'expense', amount: '', category: 'продукты', account: 'карта', date: '', comment: '' },
   income: { type: 'income', amount: '', category: 'зп nonteam', account: 'карта', date: '', comment: '' },
 };
@@ -267,18 +270,54 @@ async function loadData() {
 }
 
 async function saveOperation(op) {
-  const payload = { operation: op, ...op };
-  await api('addOperation', payload);
-  state.operations.unshift(normalizeOperation(op));
+  const optimistic = normalizeOperation({
+    ...op,
+    id: op.id || `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    createdAt: op.createdAt || new Date().toISOString(),
+  });
+
+  state.operations.unshift(optimistic);
   renderAll();
   triggerBalanceFlash();
+
+  try {
+    const payload = { operation: optimistic, ...optimistic };
+    const response = await api('addOperation', payload);
+    const saved = normalizeOperation(response.operation || optimistic);
+    const index = state.operations.findIndex(item => String(item.id) === String(optimistic.id));
+    if (index !== -1) state.operations[index] = saved;
+    renderAll();
+    return saved;
+  } catch (err) {
+    state.operations = state.operations.filter(item => String(item.id) !== String(optimistic.id));
+    renderAll();
+    throw err;
+  }
 }
 
 async function saveGoal(goal) {
-  const normalized = normalizeGoal(goal);
-  await api('addGoal', normalized);
-  state.goals.unshift(normalized);
+  const optimistic = normalizeGoal({
+    ...goal,
+    id: goal.id || `tmp-goal-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    createdAt: goal.createdAt || new Date().toISOString(),
+    updatedAt: goal.updatedAt || new Date().toISOString(),
+  });
+
+  state.goals.unshift(optimistic);
   renderAll();
+
+  try {
+    const response = await api('addGoal', optimistic);
+    const saved = normalizeGoal(response.goal || optimistic);
+    const index = state.goals.findIndex(item => String(item.id) === String(optimistic.id));
+    if (index !== -1) state.goals[index] = saved;
+    renderAll();
+    return saved;
+  } catch (err) {
+    state.goals = state.goals.filter(item => String(item.id) !== String(optimistic.id));
+    renderAll();
+    throw err;
+  }
 }
 
 
@@ -413,7 +452,13 @@ function renderAccounts() {
 
 function iconMarkup(icon, className = '') {
   if (!icon) return '•';
-  const safeIcon = String(icon);
+  const aliases = {
+    rent: 'home',
+    'rent-payment': 'home',
+    'rent-income': 'home',
+    gift: 'other',
+  };
+  const safeIcon = aliases[String(icon)] || String(icon);
   if (safeIcon.length > 3) {
     return `<img class="${className}" src="./assets/categories/${safeIcon}.svg" alt="">`;
   }
@@ -602,35 +647,83 @@ function renderAnalytics() {
 }
 function renderDonut(canvasId, legendId, data, total) {
   const canvas = $(canvasId);
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
   const legend = $(legendId);
+  if (!canvas || !legend) return;
+
+  const size = 210;
+  const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 3));
+  canvas.width = size * dpr;
+  canvas.height = size * dpr;
+  canvas.style.width = `${size}px`;
+  canvas.style.height = `${size}px`;
+
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, size, size);
+
+  const center = size / 2;
+  const radius = 70;
+  const lineWidth = 26;
+  const innerRadius = radius - lineWidth / 2 - 6;
+
   if (!total || data.length === 0) {
     legend.innerHTML = '<div class="empty-state">пока мало данных</div>';
-    ctx.beginPath(); ctx.arc(120, 120, 82, 0, Math.PI * 2); ctx.strokeStyle = '#E6EAF2'; ctx.lineWidth = 34; ctx.stroke();
-    ctx.fillStyle = '#7A8497'; ctx.font = '700 15px -apple-system, BlinkMacSystemFont, Segoe UI'; ctx.textAlign = 'center'; ctx.fillText('нет данных', 120, 125);
+    ctx.beginPath();
+    ctx.arc(center, center, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = '#E6EAF2';
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+    ctx.fillStyle = '#7A8497';
+    ctx.font = '800 14px -apple-system, BlinkMacSystemFont, Segoe UI';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('нет данных', center, center);
     return;
   }
+
   let start = -Math.PI / 2;
   data.forEach(item => {
     const angle = (item.value / total) * Math.PI * 2;
-    ctx.beginPath(); ctx.arc(120, 120, 82, start, start + angle); ctx.strokeStyle = item.color; ctx.lineWidth = 34; ctx.lineCap = 'butt'; ctx.stroke();
-    if (angle > 0.38) {
+    ctx.beginPath();
+    ctx.arc(center, center, radius, start, start + angle);
+    ctx.strokeStyle = item.color;
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = 'butt';
+    ctx.stroke();
+
+    const percent = Math.round(item.value / total * 100);
+    if (angle > 0.5 && percent >= 5) {
       const mid = start + angle / 2;
-      const x = 120 + Math.cos(mid) * 82;
-      const y = 120 + Math.sin(mid) * 82;
-      ctx.fillStyle = '#fff'; ctx.font = '800 13px -apple-system, BlinkMacSystemFont, Segoe UI'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(`${Math.round(item.value / total * 100)}%`, x, y);
+      const x = center + Math.cos(mid) * radius;
+      const y = center + Math.sin(mid) * radius;
+      ctx.fillStyle = '#fff';
+      ctx.font = '850 12px -apple-system, BlinkMacSystemFont, Segoe UI';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${percent}%`, x, y);
     }
     start += angle;
   });
-  ctx.beginPath(); ctx.arc(120, 120, 52, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
-  ctx.fillStyle = '#0F172A'; ctx.font = '850 20px -apple-system, BlinkMacSystemFont, Segoe UI'; ctx.textAlign = 'center'; ctx.fillText(formatMoney(total), 120, 116);
-  ctx.fillStyle = '#7A8497'; ctx.font = '700 12px -apple-system, BlinkMacSystemFont, Segoe UI'; ctx.fillText('всего', 120, 136);
+
+  ctx.beginPath();
+  ctx.arc(center, center, innerRadius, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+
+  ctx.fillStyle = '#0F172A';
+  ctx.font = '850 18px -apple-system, BlinkMacSystemFont, Segoe UI';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(formatMoney(total), center, center - 6);
+  ctx.fillStyle = '#7A8497';
+  ctx.font = '800 11px -apple-system, BlinkMacSystemFont, Segoe UI';
+  ctx.fillText('всего', center, center + 15);
+
   legend.innerHTML = data.map(item => `
     <div class="legend-row">
-      <div class="legend-left"><i class="legend-dot" style="background:${item.color}"></i><span class="legend-name">${item.name}</span></div>
-      <div class="legend-values"><strong>${formatMoney(item.value)}</strong><span class="legend-percent">${Math.round(item.value / total * 100)}%</span></div>
+      <div class="legend-left"><i class="legend-dot" style="background:${item.color}"></i><span class="legend-name">${escapeHtml(item.name)}</span></div>
+      <strong>${formatMoney(item.value)}</strong>
+      <span class="legend-percent">${Math.round(item.value / total * 100)}%</span>
     </div>
   `).join('');
 }
@@ -747,24 +840,21 @@ function closeGoalModal() {
   document.querySelector('.goal-modal-backdrop')?.remove();
 }
 
-function openGoalEditModal(goal, mode = 'edit') {
+function openGoalEditModal(goal) {
   closeGoalModal();
 
-  const isAmountMode = mode === 'amount';
   const backdrop = document.createElement('div');
   backdrop.className = 'goal-modal-backdrop';
   backdrop.innerHTML = `
     <form class="goal-modal" role="dialog" aria-modal="true">
       <div class="goal-modal-head">
-        <strong>${isAmountMode ? 'изменить сумму' : 'редактировать цель'}</strong>
+        <strong>редактировать цель</strong>
         <button class="goal-modal-close" type="button" aria-label="Закрыть">×</button>
       </div>
-      ${isAmountMode ? '' : `
-        <label class="field-label">название</label>
-        <input class="text-input goal-edit-name" type="text" value="${escapeHtml(goal.name)}" autocomplete="off" />
-        <label class="field-label">цель</label>
-        <input class="text-input goal-edit-target" inputmode="decimal" value="${Number(goal.target || 0)}" autocomplete="off" />
-      `}
+      <label class="field-label">название</label>
+      <input class="text-input goal-edit-name" type="text" value="${escapeHtml(goal.name)}" autocomplete="off" />
+      <label class="field-label">цель</label>
+      <input class="text-input goal-edit-target" inputmode="decimal" value="${Number(goal.target || 0)}" autocomplete="off" />
       <label class="field-label">накоплено сейчас</label>
       <input class="text-input goal-edit-current" inputmode="decimal" value="${Number(goal.current || 0)}" autocomplete="off" />
       <div class="goal-modal-actions">
@@ -794,14 +884,12 @@ function openGoalEditModal(goal, mode = 'edit') {
     if (saveButton.disabled) return;
 
     const updates = {
+      name: form.querySelector('.goal-edit-name')?.value.trim() || goal.name,
+      target: parseAmount(form.querySelector('.goal-edit-target')?.value),
       current: parseAmount(form.querySelector('.goal-edit-current')?.value),
     };
 
-    if (!isAmountMode) {
-      updates.name = form.querySelector('.goal-edit-name')?.value.trim() || goal.name;
-      updates.target = parseAmount(form.querySelector('.goal-edit-target')?.value);
-      if (!updates.name || !updates.target) return;
-    }
+    if (!updates.name || !updates.target) return;
 
     setButtonLoading(saveButton, true, 'сохраняю');
     try {
@@ -862,17 +950,133 @@ function openGoalDeleteModal(goal) {
   });
 }
 
+function hasHistoryDateFilter() {
+  return Boolean(state.historyDateFrom || state.historyDateTo);
+}
+
+function isOperationInHistoryDateRange(op) {
+  const key = dateKey(op);
+  if (!key) return false;
+  if (state.historyDateFrom && key < state.historyDateFrom) return false;
+  if (state.historyDateTo && key > state.historyDateTo) return false;
+  return true;
+}
+
+function historyDateLabel() {
+  if (!hasHistoryDateFilter()) return 'дата';
+  const from = state.historyDateFrom;
+  const to = state.historyDateTo;
+  if (from && to && from === to) return formatShortDateLabel(from);
+  if (from && to) return `${formatShortDateLabel(from)}–${formatShortDateLabel(to)}`;
+  if (from) return `с ${formatShortDateLabel(from)}`;
+  return `до ${formatShortDateLabel(to)}`;
+}
+
+function formatShortDateLabel(value) {
+  const date = parseDateSafe(value);
+  if (!date) return value;
+  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '');
+}
+
+function openHistoryDateModal() {
+  closeHistoryDateModal();
+  const backdrop = document.createElement('div');
+  backdrop.className = 'history-date-backdrop';
+  backdrop.innerHTML = `
+    <form class="history-date-modal" role="dialog" aria-modal="true">
+      <div class="history-date-head">
+        <strong>период истории</strong>
+        <button class="history-date-close" type="button" aria-label="Закрыть">×</button>
+      </div>
+      <label class="field-label">с даты</label>
+      <input class="text-input history-date-from" type="date" value="${escapeHtml(state.historyDateFrom)}" />
+      <label class="field-label">по дату</label>
+      <input class="text-input history-date-to" type="date" value="${escapeHtml(state.historyDateTo)}" />
+      <div class="history-date-quick">
+        <button type="button" data-history-date-today>сегодня</button>
+        <button type="button" data-history-date-clear>сбросить</button>
+      </div>
+      <div class="history-date-actions">
+        <button class="secondary-btn" type="button" data-history-date-cancel>отмена</button>
+        <button class="primary-btn" type="submit">применить</button>
+      </div>
+    </form>
+  `;
+  document.body.appendChild(backdrop);
+
+  const form = backdrop.querySelector('.history-date-modal');
+  const fromInput = backdrop.querySelector('.history-date-from');
+  const toInput = backdrop.querySelector('.history-date-to');
+  const close = () => closeHistoryDateModal();
+
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+  backdrop.querySelector('.history-date-close').addEventListener('click', close);
+  backdrop.querySelector('[data-history-date-cancel]').addEventListener('click', close);
+  backdrop.querySelector('[data-history-date-today]').addEventListener('click', () => {
+    const today = todayISO();
+    fromInput.value = today;
+    toInput.value = today;
+    haptic(6);
+  });
+  backdrop.querySelector('[data-history-date-clear]').addEventListener('click', () => {
+    fromInput.value = '';
+    toInput.value = '';
+    haptic(6);
+  });
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    state.historyDateFrom = fromInput.value || '';
+    state.historyDateTo = toInput.value || '';
+    if (state.historyDateFrom && state.historyDateTo && state.historyDateFrom > state.historyDateTo) {
+      const tmp = state.historyDateFrom;
+      state.historyDateFrom = state.historyDateTo;
+      state.historyDateTo = tmp;
+    }
+    state.historyExpanded = true;
+    closeHistoryDateModal();
+    renderHistory();
+    haptic(8);
+  });
+}
+
+function closeHistoryDateModal() {
+  document.querySelector('.history-date-backdrop')?.remove();
+}
+
 function renderHistory() {
   renderHistoryFilters();
   const list = $('historyList');
-  let rows = [...state.operations]
+  const toggle = $('historyShowAll');
+  const dateButton = $('historyDateButton');
+  if (dateButton) {
+    dateButton.classList.toggle('active', hasHistoryDateFilter());
+    const label = dateButton.querySelector('span');
+    if (label) label.textContent = historyDateLabel();
+  }
+
+  let allRows = [...state.operations]
     .filter(op => op.type !== 'initial')
     .filter(op => state.historyAccount === 'all' || op.account === state.historyAccount)
     .filter(op => state.historyCategory === 'all' || op.category === state.historyCategory)
-    .sort(compareOperationsNewestFirst)
-    .slice(0, 90);
+    .filter(op => !hasHistoryDateFilter() || isOperationInHistoryDateRange(op))
+    .sort(compareOperationsNewestFirst);
 
-  if (!rows.length) { list.innerHTML = '<div class="empty-state">история пока пустая</div>'; return; }
+  const todayRows = allRows.filter(op => dateKey(op) === todayISO());
+  const shouldLimitToToday = !state.historyExpanded && !hasHistoryDateFilter() && state.historyAccount === 'all' && state.historyCategory === 'all';
+  const rows = shouldLimitToToday ? todayRows : allRows.slice(0, 120);
+
+  if (toggle) {
+    const canToggle = !hasHistoryDateFilter() && allRows.length > todayRows.length;
+    toggle.hidden = !canToggle;
+    toggle.textContent = state.historyExpanded ? 'показать только сегодня' : 'показать все';
+  }
+
+  if (!rows.length) {
+    const message = shouldLimitToToday ? 'сегодня операций нет' : 'история пока пустая';
+    list.innerHTML = `<div class="empty-state">${message}</div>`;
+    return;
+  }
 
   const groups = new Map();
   rows.forEach(op => {
@@ -896,8 +1100,8 @@ function renderHistory() {
       const sign = op.type === 'income' ? '+' : '-';
       return `<div class="history-item">
         <div class="history-title">
-          <strong><span class="history-icon-wrap">${iconMarkup(icon, 'history-icon')}</span><span>${op.category}</span></strong>
-          <span class="history-meta">${op.account}${op.comment ? ' · ' + op.comment : ''}</span>
+          <strong><span class="history-icon-wrap">${iconMarkup(icon, 'history-icon')}</span><span>${escapeHtml(op.category)}</span></strong>
+          <span class="history-meta">${escapeHtml(op.account)}${op.comment ? ' · ' + escapeHtml(op.comment) : ''}</span>
         </div>
         <strong class="history-amount ${op.type}">${sign}${formatMoney(op.amount)}</strong>
       </div>`;
@@ -909,6 +1113,7 @@ function renderHistory() {
     </section>`;
   }).join('');
 }
+
 function renderAll() { renderAccounts(); renderForms(); renderAnalytics(); renderGoals(); renderHistory(); }
 
 function showToast(message) {
@@ -982,6 +1187,15 @@ function bindEvents() {
   if ($('historyCategoryFilter')) $('historyCategoryFilter').addEventListener('change', e => {
     state.historyCategory = e.target.value;
     renderHistory();
+  });
+  if ($('historyDateButton')) $('historyDateButton').addEventListener('click', () => {
+    openHistoryDateModal();
+    haptic(6);
+  });
+  if ($('historyShowAll')) $('historyShowAll').addEventListener('click', () => {
+    state.historyExpanded = !state.historyExpanded;
+    renderHistory();
+    haptic(6);
   });
 
   $('expenseForm').addEventListener('submit', async e => {
